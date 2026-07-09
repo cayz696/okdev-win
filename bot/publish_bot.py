@@ -21,13 +21,16 @@ from image_client import ImageError, generate_cover_image
 from keyboards import (
     kb_back_main,
     kb_cancel,
+    kb_delete_confirm,
     kb_draft_actions,
     kb_lang,
     kb_main,
     kb_plan_days,
+    kb_posts_list,
     kb_settings,
 )
 from models import Draft
+from posts_admin import PostsAdminError, delete_site_post, list_site_posts, post_admin_url
 from publisher import PublishError, publish_draft
 from storage import clear_channel_id, get_channel_id, set_channel_id
 
@@ -98,6 +101,32 @@ async def reply_or_edit(
             )
     elif update.message:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+
+async def show_posts_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        posts = await list_site_posts(limit=30)
+        if not posts:
+            await reply_or_edit(
+                update,
+                "📚 <b>Пости на сайті</b>\n\nПоки немає опублікованих постів.",
+                reply_markup=kb_back_main(),
+                parse_mode="HTML",
+            )
+            return
+        lines = ["📚 <b>Пости на сайті</b>\n", "Обери пост для видалення:\n"]
+        for p in posts[:15]:
+            lang = p.get("lang", "uk")
+            slug = p.get("slug", "")
+            lines.append(f"• [{lang}] {p.get('title', slug)}")
+        await reply_or_edit(
+            update,
+            "\n".join(lines),
+            reply_markup=kb_posts_list(posts),
+            parse_mode="HTML",
+        )
+    except PostsAdminError as exc:
+        await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main())
 
 
 async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -231,6 +260,43 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=kb_settings(ch),
                     parse_mode="HTML",
                 )
+            elif value == "posts":
+                await show_posts_menu(update, context)
+
+        elif action == "del":
+            lang, _, slug = value.partition(":")
+            if not slug:
+                await reply_or_edit(update, "Невірний slug", reply_markup=kb_back_main(), answer=False)
+                return
+            await reply_or_edit(
+                update,
+                f"🗑 <b>Видалити з сайту?</b>\n\n"
+                f"Slug: <code>{slug}</code>\n"
+                f"URL: {post_admin_url(slug, lang)}\n\n"
+                f"З каналу видали вручну.",
+                reply_markup=kb_delete_confirm(lang, slug),
+                parse_mode="HTML",
+                answer=False,
+            )
+
+        elif action == "delok":
+            lang, _, slug = value.partition(":")
+            if not slug:
+                await reply_or_edit(update, "Невірний slug", reply_markup=kb_back_main(), answer=False)
+                return
+            await reply_or_edit(update, "⏳ Видаляю…", answer=False)
+            try:
+                data = await delete_site_post(slug)
+                title = data.get("title") or slug
+                await reply_or_edit(
+                    update,
+                    f"✅ Видалено з сайту:\n<b>{title}</b>\n\nЗ каналу — видали вручну.",
+                    reply_markup=kb_back_main(),
+                    parse_mode="HTML",
+                    answer=False,
+                )
+            except PostsAdminError as exc:
+                await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main(), answer=False)
 
         elif action == "lang":
             draft = get_draft(context)
@@ -377,7 +443,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 clear_channel_id()
                 await reply_or_edit(update, "Канал видалено.", reply_markup=kb_settings(""))
 
-    except (AIError, PublishError, ImageError) as exc:
+    except (AIError, PublishError, ImageError, PostsAdminError) as exc:
         log.warning("User action error: %s", exc)
         await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main(), answer=False)
     except Exception as exc:
@@ -454,7 +520,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text("Обери дію в меню 👇", reply_markup=kb_main())
 
-    except (AIError, PublishError, ImageError) as exc:
+    except (AIError, PublishError, ImageError, PostsAdminError) as exc:
         await update.message.reply_text(f"❌ {exc}", reply_markup=kb_back_main())
     except Exception as exc:
         log.exception("Text handler error")

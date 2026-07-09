@@ -12,6 +12,7 @@ def kb_main() -> InlineKeyboardMarkup:
             InlineKeyboardButton("📋 Чернетка", callback_data="act:draft"),
         ],
         [InlineKeyboardButton("⚙️ Налаштування", callback_data="act:settings")],
+        [InlineKeyboardButton("🗑 Пости на сайті", callback_data="act:posts")],
     ])
 
 
@@ -82,3 +83,26 @@ def kb_back_main() -> InlineKeyboardMarkup:
 
 def kb_cancel() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton("❌ Скасувати", callback_data="draft:cancel")]])
+
+
+def kb_posts_list(posts: list[dict]) -> InlineKeyboardMarkup:
+    rows = []
+    for p in posts[:15]:
+        slug = p.get("slug") or p.get("id") or "?"
+        title = (p.get("title") or slug)[:36]
+        lang = p.get("lang", "uk")
+        rows.append([
+            InlineKeyboardButton(f"🗑 {title}", callback_data=f"del:{lang}:{slug}"),
+        ])
+    rows.append([InlineKeyboardButton("🔄 Оновити", callback_data="act:posts")])
+    rows.append([InlineKeyboardButton("◀️ Меню", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
+
+
+def kb_delete_confirm(lang: str, slug: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Так, видалити", callback_data=f"delok:{lang}:{slug}"),
+            InlineKeyboardButton("❌ Ні", callback_data="act:posts"),
+        ],
+    ])

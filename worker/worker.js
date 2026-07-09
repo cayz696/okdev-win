@@ -18,7 +18,7 @@ function corsHeaders(origin) {
   const allow = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, X-Publish-Secret",
     "Vary": "Origin",
   };
@@ -133,18 +133,24 @@ async function handlePostsGet(request, env, origin) {
 
   const url = new URL(request.url);
   const lang = (url.searchParams.get("lang") || "").trim();
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 100);
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "20", 10) || 20, 50);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
 
   let posts = await loadPosts(env);
   const now = new Date().toISOString();
   posts = posts.filter((p) => !p.scheduledAt || p.scheduledAt <= now);
   if (lang) posts = posts.filter((p) => p.lang === lang);
-  posts = posts.slice(0, limit).map(publicPost);
 
-  return new Response(JSON.stringify({ ok: true, posts }), {
-    status: 200,
-    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300", ...corsHeaders(origin) },
-  });
+  const total = posts.length;
+  const slice = posts.slice(offset, offset + limit).map(publicPost);
+
+  return new Response(
+    JSON.stringify({ ok: true, posts: slice, total, offset, limit, hasMore: offset + limit < total }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300", ...corsHeaders(origin) },
+    },
+  );
 }
 
 async function handlePostBySlug(request, env, origin, slug) {
@@ -265,6 +271,27 @@ async function handlePostsPublish(request, env, origin) {
   return json({ ok: true, id: post.id, slug: post.slug, imageId }, 200, origin);
 }
 
+async function handlePostDelete(request, env, origin, slug) {
+  if (!env.POSTS_KV) return json({ ok: false, error: "POSTS_KV not configured" }, 500, origin);
+
+  const secret = request.headers.get("X-Publish-Secret") || "";
+  if (!env.PUBLISH_SECRET || secret !== env.PUBLISH_SECRET) {
+    return json({ ok: false, error: "Unauthorized" }, 401, origin);
+  }
+
+  const posts = await loadPosts(env);
+  const idx = posts.findIndex((p) => p.slug === slug || p.id === slug);
+  if (idx === -1) return json({ ok: false, error: "Not found" }, 404, origin);
+
+  const [removed] = posts.splice(idx, 1);
+  await savePosts(env, posts);
+  if (removed.imageId) {
+    await env.POSTS_KV.delete(`img:${removed.imageId}`);
+  }
+
+  return json({ ok: true, slug: removed.slug, title: removed.title }, 200, origin);
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -286,8 +313,11 @@ export default {
     }
 
     const postMatch = url.pathname.match(/^\/posts\/([^/]+)$/);
-    if (postMatch && request.method === "GET") {
-      return handlePostBySlug(request, env, origin, decodeURIComponent(postMatch[1]));
+    if (postMatch) {
+      const slug = decodeURIComponent(postMatch[1]);
+      if (request.method === "GET") return handlePostBySlug(request, env, origin, slug);
+      if (request.method === "DELETE") return handlePostDelete(request, env, origin, slug);
+      return json({ ok: false, error: "Method not allowed" }, 405, origin);
     }
 
     if (request.method !== "POST") {
