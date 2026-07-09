@@ -19,3 +19,5 @@ BOT_TIMEZONE = os.getenv("BOT_TIMEZONE", "Europe/Kyiv")
 
 DEFAULT_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")
 SETTINGS_FILE = os.getenv("BOT_SETTINGS_FILE", "data/settings.json")
+SCHEDULE_FILE = os.getenv("BOT_SCHEDULE_FILE", "data/schedule.json")
+SCHEDULE_CHECK_SECONDS = int(os.getenv("SCHEDULE_CHECK_SECONDS", "120"))

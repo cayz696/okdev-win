@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """okdev.win blog bot — inline UI, AI (OpenRouter), site + Telegram channel publishing."""
 
+import asyncio
 import io
 import logging
 
@@ -16,7 +17,7 @@ from telegram.ext import (
 )
 
 from ai_client import AIError, generate_post, generate_weekly_plan
-from config import ALLOWED_IDS, TELEGRAM_BOT_TOKEN
+from config import ALLOWED_IDS, SCHEDULE_CHECK_SECONDS, TELEGRAM_BOT_TOKEN
 from image_client import ImageError, generate_cover_image
 from keyboards import (
     kb_back_main,
@@ -27,11 +28,14 @@ from keyboards import (
     kb_main,
     kb_plan_days,
     kb_posts_list,
+    kb_schedule_list,
     kb_settings,
 )
 from models import Draft
 from posts_admin import PostsAdminError, delete_site_post, list_site_posts, post_admin_url
 from publisher import PublishError, publish_draft
+from schedule_storage import add_to_queue, get_pending, is_plan_day_queued, remove_from_queue
+from scheduler import process_due_posts
 from storage import clear_channel_id, get_channel_id, set_channel_id
 
 logging.basicConfig(
@@ -101,6 +105,74 @@ async def reply_or_edit(
             )
     elif update.message:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+
+async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pending = get_pending()
+    if not pending:
+        await reply_or_edit(
+            update,
+            "📆 <b>Авторозклад</b>\n\nЧерга порожня.\n\n"
+            "Згенеруй <b>📅 План на тиждень</b> → "
+            "<b>🎨 Обкладинки + автопублікація</b>",
+            reply_markup=kb_back_main(),
+            parse_mode="HTML",
+        )
+        return
+    lines = ["📆 <b>Авторозклад</b>\n", f"В черзі: <b>{len(pending)}</b> постів\n"]
+    for item in pending[:10]:
+        day = f"День {item['plan_day']} · " if item.get("plan_day") else ""
+        when = item.get("scheduled_at", "")[:16].replace("T", " ")
+        lines.append(f"• {day}{item.get('title', '?')[:40]}")
+        lines.append(f"  🕐 {when}")
+    lines.append("\n<i>Бот має працювати постійно (run.bat).</i>")
+    await reply_or_edit(
+        update,
+        "\n".join(lines),
+        reply_markup=kb_schedule_list(pending),
+        parse_mode="HTML",
+    )
+
+
+def _queued_plan_days() -> set[int]:
+    return {i.get("plan_day") for i in get_pending() if i.get("plan_day")}
+
+
+async def auto_queue_weekly_plan(bot, chat_id: int, user_id: int, plan: list[dict]) -> None:
+    await bot.send_message(chat_id, "🎨 Генерую обкладинки для 7 постів…")
+    queued = 0
+    for p in plan:
+        draft = Draft.from_ai(p)
+        day = p.get("day", 0)
+        try:
+            image_bytes, mime = await generate_cover_image(draft)
+            draft.image_bytes = image_bytes
+            draft.image_mime = mime
+            add_to_queue(
+                draft,
+                plan_day=day,
+                notify_user_id=user_id,
+                to_site=True,
+                to_channel=True,
+            )
+            queued += 1
+            await bot.send_message(
+                chat_id,
+                f"✅ День {day}: <b>{draft.title[:60]}</b>\n🕐 {draft.scheduled_at[:16]}",
+                parse_mode="HTML",
+            )
+        except (ImageError, ValueError) as exc:
+            await bot.send_message(chat_id, f"❌ День {day}: {exc}")
+
+    await bot.send_message(
+        chat_id,
+        f"📆 <b>Автопублікація активна</b>\n\n"
+        f"В черзі: <b>{queued}/7</b> постів.\n"
+        f"Кожного дня о 09:00 (за датою плану) — сайт + канал.\n"
+        f"Ти отримаєш повідомлення після кожної публікації.",
+        parse_mode="HTML",
+        reply_markup=kb_back_main(),
+    )
 
 
 async def show_posts_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -239,11 +311,36 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lines = ["📅 <b>Контент-план на тиждень</b>\n"]
                 for p in posts:
                     lines.append(f"<b>День {p['day']}</b> [{p.get('lang','uk')}] {p.get('title','')}")
+                lines.append(
+                    "\n<b>Швидко:</b> 🎨 Обкладинки + автопублікація — все одразу.\n"
+                    "<b>Вручну:</b> обери день → обкладинка → ⏰ В автопублікацію."
+                )
                 await reply_or_edit(
                     update,
-                    "\n".join(lines) + "\n\nОбери день:",
-                    reply_markup=kb_plan_days(),
+                    "\n".join(lines),
+                    reply_markup=kb_plan_days(queued_days=_queued_plan_days()),
                     parse_mode="HTML",
+                    answer=False,
+                )
+            elif value == "plan_auto":
+                await safe_answer(q)
+                plan = context.user_data.get("content_plan", [])
+                if len(plan) < 7:
+                    await reply_or_edit(
+                        update,
+                        "Спочатку згенеруй план на 7 днів.",
+                        reply_markup=kb_main(),
+                        answer=False,
+                    )
+                    return
+                chat_id = update.effective_chat.id
+                user_id = update.effective_user.id
+                asyncio.create_task(
+                    auto_queue_weekly_plan(context.bot, chat_id, user_id, plan)
+                )
+                await reply_or_edit(
+                    update,
+                    "⏳ Запускаю автопублікацію…\nДивись повідомлення нижче 👇",
                     answer=False,
                 )
             elif value == "draft":
@@ -262,6 +359,17 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             elif value == "posts":
                 await show_posts_menu(update, context)
+            elif value == "schedule":
+                await show_schedule_menu(update, context)
+
+        elif action == "sched":
+            if value.startswith("cancel:"):
+                item_id = value.split(":", 1)[1]
+                if remove_from_queue(item_id):
+                    await reply_or_edit(update, "✅ Прибрано з черги.", answer=False)
+                else:
+                    await reply_or_edit(update, "Не знайдено в черзі.", answer=False)
+                await show_schedule_menu(update, context)
 
         elif action == "del":
             lang, _, slug = value.partition(":")
@@ -326,6 +434,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await reply_or_edit(update, "День не знайдено. Згенеруй план ще раз.", reply_markup=kb_main(), answer=False)
                 return
             context.user_data["draft"] = Draft.from_ai(post)
+            context.user_data["plan_day"] = day
             await show_draft(update, context, answer=False)
 
         elif action == "pub":
@@ -420,6 +529,51 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         reply_markup=kb_draft_actions(),
                         answer=False,
                     )
+            elif value == "queue":
+                draft = get_draft(context)
+                if not draft.title or not draft.body:
+                    await reply_or_edit(update, "Чернетка порожня", reply_markup=kb_draft_actions(), answer=False)
+                    return
+                if not draft.image_bytes:
+                    await reply_or_edit(
+                        update,
+                        "Спочатку згенеруй 🎨 AI обкладинку або надішли 📷 фото.",
+                        reply_markup=kb_draft_actions(),
+                        answer=False,
+                    )
+                    return
+                if not draft.scheduled_at:
+                    await reply_or_edit(
+                        update,
+                        "Немає дати. Обери пост з <b>📅 Плану на тиждень</b> або вкажи 🗓 Розклад.",
+                        reply_markup=kb_draft_actions(),
+                        parse_mode="HTML",
+                        answer=False,
+                    )
+                    return
+                try:
+                    plan_day = context.user_data.get("plan_day", 0)
+                    add_to_queue(
+                        draft,
+                        plan_day=plan_day,
+                        notify_user_id=update.effective_user.id,
+                        to_site=True,
+                        to_channel=True,
+                    )
+                    when = draft.scheduled_at[:16].replace("T", " ")
+                    await reply_or_edit(
+                        update,
+                        f"⏰ <b>В автопублікації</b>\n\n"
+                        f"<b>{draft.title}</b>\n"
+                        f"🕐 {when}\n"
+                        f"📢 Сайт + канал",
+                        reply_markup=kb_back_main(),
+                        parse_mode="HTML",
+                        answer=False,
+                    )
+                    clear_draft(context)
+                except ValueError as exc:
+                    await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_draft_actions(), answer=False)
             elif value == "schedule":
                 context.user_data["mode"] = "schedule"
                 await reply_or_edit(
@@ -605,7 +759,18 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     app.add_error_handler(error_handler)
 
-    log.info("okdev.win blog bot started (inline UI, async)")
+    if app.job_queue:
+        app.job_queue.run_repeating(
+            process_due_posts,
+            interval=SCHEDULE_CHECK_SECONDS,
+            first=30,
+            name="scheduled_posts",
+        )
+        log.info("Scheduler active, check every %ss", SCHEDULE_CHECK_SECONDS)
+    else:
+        log.warning("Job queue unavailable — install python-telegram-bot[job-queue]")
+
+    log.info("okdev.win blog bot started (inline UI, async, scheduler)")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 

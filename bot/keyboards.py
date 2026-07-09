@@ -11,7 +11,10 @@ def kb_main() -> InlineKeyboardMarkup:
             InlineKeyboardButton("📅 План на тиждень", callback_data="act:plan"),
             InlineKeyboardButton("📋 Чернетка", callback_data="act:draft"),
         ],
-        [InlineKeyboardButton("⚙️ Налаштування", callback_data="act:settings")],
+        [
+            InlineKeyboardButton("📆 Авторозклад", callback_data="act:schedule"),
+            InlineKeyboardButton("⚙️ Налаштування", callback_data="act:settings"),
+        ],
         [InlineKeyboardButton("🗑 Пости на сайті", callback_data="act:posts")],
     ])
 
@@ -26,16 +29,19 @@ def kb_lang(back: str = "nav:main") -> InlineKeyboardMarkup:
     ])
 
 
-def kb_plan_days(count: int = 7) -> InlineKeyboardMarkup:
+def kb_plan_days(count: int = 7, queued_days: set[int] | None = None) -> InlineKeyboardMarkup:
+    queued_days = queued_days or set()
     rows = []
     row = []
     for i in range(1, count + 1):
-        row.append(InlineKeyboardButton(f"День {i}", callback_data=f"plan:{i}"))
+        mark = "✅ " if i in queued_days else ""
+        row.append(InlineKeyboardButton(f"{mark}День {i}", callback_data=f"plan:{i}"))
         if len(row) == 3:
             rows.append(row)
             row = []
     if row:
         rows.append(row)
+    rows.append([InlineKeyboardButton("🎨 Обкладинки + автопублікація", callback_data="act:plan_auto")])
     rows.append([
         InlineKeyboardButton("🔄 Новий план", callback_data="act:plan"),
         InlineKeyboardButton("◀️ Меню", callback_data="nav:main"),
@@ -60,6 +66,7 @@ def kb_draft_actions() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("🗓 Розклад", callback_data="draft:schedule"),
+            InlineKeyboardButton("⏰ В автопублікацію", callback_data="draft:queue"),
         ],
         [
             InlineKeyboardButton("◀️ Назад", callback_data="nav:back"),
@@ -95,6 +102,23 @@ def kb_posts_list(posts: list[dict]) -> InlineKeyboardMarkup:
             InlineKeyboardButton(f"🗑 {title}", callback_data=f"del:{lang}:{slug}"),
         ])
     rows.append([InlineKeyboardButton("🔄 Оновити", callback_data="act:posts")])
+    rows.append([InlineKeyboardButton("◀️ Меню", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
+
+
+def kb_schedule_list(items: list[dict]) -> InlineKeyboardMarkup:
+    rows = []
+    for item in items[:10]:
+        title = (item.get("title") or "?")[:28]
+        day = item.get("plan_day")
+        prefix = f"D{day} " if day else ""
+        rows.append([
+            InlineKeyboardButton(
+                f"❌ {prefix}{title}",
+                callback_data=f"sched:cancel:{item['id']}",
+            ),
+        ])
+    rows.append([InlineKeyboardButton("🔄 Оновити", callback_data="act:schedule")])
     rows.append([InlineKeyboardButton("◀️ Меню", callback_data="nav:main")])
     return InlineKeyboardMarkup(rows)
 
