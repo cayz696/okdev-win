@@ -55,6 +55,9 @@ def kb_draft_actions() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("📷 Додати фото", callback_data="draft:photo"),
+            InlineKeyboardButton("🎨 AI обкладинка", callback_data="draft:gen_image"),
+        ],
+        [
             InlineKeyboardButton("🗓 Розклад", callback_data="draft:schedule"),
         ],
         [

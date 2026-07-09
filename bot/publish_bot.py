@@ -17,6 +17,7 @@ from telegram.ext import (
 
 from ai_client import AIError, generate_post, generate_weekly_plan
 from config import ALLOWED_IDS, TELEGRAM_BOT_TOKEN
+from image_client import ImageError, generate_cover_image
 from keyboards import (
     kb_back_main,
     kb_cancel,
@@ -120,7 +121,8 @@ async def show_draft(update: Update, context: ContextTypes.DEFAULT_TYPE, *, answ
     push_screen(context, "draft")
     await reply_or_edit(
         update,
-        draft.preview_text() + "\n\n<b>Куди публікувати?</b>",
+        draft.preview_text() + "\n\n<b>Куди публікувати?</b>"
+        + ("" if draft.image_bytes else "\n<i>💡 Можеш згенерувати обкладинку: 🎨 AI обкладинка</i>"),
         reply_markup=kb_draft_actions(),
         parse_mode="HTML",
         answer=answer,
@@ -332,6 +334,26 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "📷 Надішли фото (можна з підписом — title/summary в caption):",
                     reply_markup=kb_cancel(),
                 )
+            elif value == "gen_image":
+                draft = get_draft(context)
+                if not draft.title:
+                    await reply_or_edit(update, "Спочатку згенеруй пост.", reply_markup=kb_main(), answer=False)
+                    return
+                await safe_answer(q)
+                await reply_or_edit(update, "🎨 Генерую обкладинку (~15 сек)…", answer=False)
+                try:
+                    image_bytes, mime = await generate_cover_image(draft)
+                    draft.image_bytes = image_bytes
+                    draft.image_mime = mime
+                    context.user_data["draft"] = draft
+                    await show_draft(update, context, answer=False)
+                except ImageError as exc:
+                    await reply_or_edit(
+                        update,
+                        f"❌ Обкладинка: {exc}",
+                        reply_markup=kb_draft_actions(),
+                        answer=False,
+                    )
             elif value == "schedule":
                 context.user_data["mode"] = "schedule"
                 await reply_or_edit(
@@ -355,7 +377,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 clear_channel_id()
                 await reply_or_edit(update, "Канал видалено.", reply_markup=kb_settings(""))
 
-    except (AIError, PublishError) as exc:
+    except (AIError, PublishError, ImageError) as exc:
         log.warning("User action error: %s", exc)
         await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main(), answer=False)
     except Exception as exc:
@@ -432,7 +454,7 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text("Обери дію в меню 👇", reply_markup=kb_main())
 
-    except (AIError, PublishError) as exc:
+    except (AIError, PublishError, ImageError) as exc:
         await update.message.reply_text(f"❌ {exc}", reply_markup=kb_back_main())
     except Exception as exc:
         log.exception("Text handler error")

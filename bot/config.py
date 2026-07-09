@@ -10,6 +10,10 @@ ALLOWED_IDS = {int(x) for x in os.getenv("ALLOWED_USER_IDS", "").split(",") if x
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-3.1-flash-lite")
+OPENROUTER_IMAGE_MODEL = os.getenv(
+    "OPENROUTER_IMAGE_MODEL",
+    "black-forest-labs/flux.2-klein-4b",
+)
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "https://www.okdev.win")
 BOT_TIMEZONE = os.getenv("BOT_TIMEZONE", "Europe/Kyiv")
 

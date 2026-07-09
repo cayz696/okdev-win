@@ -1,8 +1,10 @@
 """Publish draft to okdev.win Worker and Telegram channel."""
 
 import base64
+import html
 import logging
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 
 import httpx
 from telegram import Bot
@@ -12,6 +14,9 @@ from config import PUBLISH_SECRET, SITE_DOMAIN, WORKER_URL
 from models import Draft
 
 log = logging.getLogger(__name__)
+
+TG_MESSAGE_MAX = 4096
+TG_CAPTION_MAX = 1024
 
 
 class PublishError(Exception):
@@ -94,38 +99,61 @@ async def publish_to_site(draft: Draft) -> dict:
     return data
 
 
-def _channel_caption(draft: Draft) -> str:
+def _truncate_text(text: str, limit: int) -> str:
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    para = cut.rfind("\n\n")
+    if para > limit * 0.6:
+        return cut[:para].rstrip()
+    sentence = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+    if sentence > limit * 0.6:
+        return cut[: sentence + 1].rstrip()
+    return cut.rstrip() + "…"
+
+
+def _channel_message(draft: Draft, *, with_photo: bool) -> str:
+    """Full post text for Telegram, respecting one-message limits."""
     url = f"{SITE_DOMAIN.rstrip('/')}{draft.post_url()}"
-    tags = " ".join(f"#{t.replace(' ', '_')}" for t in draft.tags[:4])
-    kw = ", ".join(draft.keywords[:5])
-    return (
-        f"<b>{draft.title}</b>\n\n"
-        f"{draft.summary}\n\n"
-        f"🔗 {url}\n"
-        f"{tags}\n"
-        f"<i>{kw}</i>"
-    )
+    title = html.escape(draft.title or "")
+    body = html.escape((draft.body or "").strip())
+    link = f"\n\n🔗 <a href=\"{html.escape(url)}\">Читати на okdev.win</a>"
+
+    tags = ""
+    if draft.tags:
+        tags = "\n\n" + " ".join(
+            html.escape(f"#{re.sub(r'[^\\w\\u0400-\\u04FF]+', '_', t)}")
+            for t in draft.tags[:5]
+        )
+
+    header = f"<b>{title}</b>\n\n"
+    max_len = TG_CAPTION_MAX if with_photo else TG_MESSAGE_MAX
+    reserved = len(link) + len(tags) + 20
+    body_limit = max(200, max_len - len(header) - reserved)
+    body = _truncate_text(body, body_limit)
+
+    return header + body + tags + link
 
 
 async def publish_to_channel(bot: Bot, channel_id: str, draft: Draft) -> None:
     if not channel_id:
         raise PublishError("Telegram-канал не налаштовано. ⚙️ Налаштування → Вказати канал")
 
-    caption = _channel_caption(draft)
-    if len(caption) > 1024:
-        caption = caption[:1020] + "…"
+    has_image = bool(draft.image_bytes)
+    text = _channel_message(draft, with_photo=has_image)
 
-    if draft.image_bytes:
+    if has_image:
         await bot.send_photo(
             chat_id=channel_id,
             photo=draft.image_bytes,
-            caption=caption,
+            caption=text,
             parse_mode=ParseMode.HTML,
         )
     else:
         await bot.send_message(
             chat_id=channel_id,
-            text=caption,
+            text=text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=False,
         )
