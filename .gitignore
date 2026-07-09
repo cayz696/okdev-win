@@ -1,0 +1,6 @@
+.DS_Store
+mnt/
+tailwind-preview.html
+*.log
+.env
+worker/.wrangler/

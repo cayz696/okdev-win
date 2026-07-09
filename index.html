@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Олександр Каліновський — Telegram-боти та автоматизація</title>
+<meta name="description" content="Розробка Telegram-ботів на замовлення, автоматизація бізнес-процесів та CRM-системи для компаній з Києва, Львова, Одеси та всієї України.">
+<meta name="keywords" content="замовити бота, купити бота, як зробити бота, зробити бота в телеграм, бот на замовлення, розробка ботів, розробка telegram ботів, бот для телеграм, системи автоматизації, автоматизація бізнес процесів, crm бот, crm система під ключ, бот для бізнесу, розробник ботів україна, бот для магазину, дашборд для бізнесу, ai агенти для бізнесу">
+<link rel="canonical" href="https://www.okdev.win/">
+<link rel="alternate" hreflang="uk" href="https://www.okdev.win/">
+<link rel="alternate" hreflang="en" href="https://www.okdev.win/en/">
+<link rel="alternate" hreflang="x-default" href="https://www.okdev.win/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="uk_UA">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:title" content="Олександр Каліновський — Telegram-боти та автоматизація">
+<meta property="og:description" content="Боти, автоматизація бізнес-процесів та дашборди для компаній по всій Україні та за кордоном.">
+<meta property="og:url" content="https://www.okdev.win/">
+<meta property="og:image" content="https://www.okdev.win/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://www.okdev.win/assets/og-image.png">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "Oleksandr Kalinovskyi — AI Automation & Product Builder",
+  "url": "https://www.okdev.win/",
+  "description": "Розробка Telegram-ботів, автоматизація бізнес-процесів та дашборди для бізнесу.",
+  "areaServed": [
+    {"@type":"City","name":"Київ"},
+    {"@type":"City","name":"Львів"},
+    {"@type":"City","name":"Одеса"},
+    {"@type":"City","name":"Харків"},
+    {"@type":"City","name":"Дніпро"},
+    {"@type":"City","name":"Запоріжжя"},
+    {"@type":"City","name":"Вінниця"},
+    {"@type":"Country","name":"Ukraine"}
+  ],
+  "founder": {
+    "@type": "Person",
+    "name": "Oleksandr Kalinovskyi",
+    "jobTitle": "AI Automation & Product Builder"
+  },
+  "serviceType": ["Telegram bot development", "Business process automation", "Dashboard development", "AI product specification"]
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="#top" class="brand"><span class="dot">●</span> ok<span style="color:var(--text-muted)">.dev</span></a>
+    <nav class="primary-nav" aria-label="Основна навігація">
+      <a href="#about">Про мене</a>
+      <a href="#skills">Навички</a>
+      <a href="#projects">Проєкти</a>
+      <a href="#services">Послуги</a>
+      <a href="#offer">Пакет</a>
+      <a href="blog/">Блог</a>
+      <a href="#contact">Контакти</a>
+    </nav>
+    <div class="header-actions">
+      <div class="lang-switch">
+        <a href="/" aria-current="true">UA</a>
+        <a href="/en/">EN</a>
+      </div>
+      <a href="#contact" class="btn btn-primary">Обговорити проєкт</a>
+      <button class="nav-toggle" aria-label="Меню" aria-expanded="false">☰</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid-bg" aria-hidden="true"></div>
+    <div class="container">
+      <div>
+        <p class="eyebrow">AI AUTOMATION &amp; PRODUCT BUILDER</p>
+        <h1>Автоматизую бізнес-процеси й створюю <span class="gradient-text">Telegram-ботів</span>, які працюють замість вас</h1>
+        <p class="hero-sub">Розробляю ботів на замовлення, CRM-автоматизацію, дашборди та продукти на основі AI-агентів — від технічного завдання до запуску в проді.</p>
+        <div class="hero-cta">
+          <a href="#contact" class="btn btn-primary">Замовити бота →</a>
+          <a href="#projects" class="btn btn-ghost">Переглянути проєкти</a>
+        </div>
+        <div class="hero-stack">
+          <span class="label">Інструменти в роботі</span>
+        </div>
+        <div class="chip-row" style="margin-top:10px">
+          <span class="stack-pill">Python</span>
+          <span class="stack-pill">Telegram Bot API</span>
+          <span class="stack-pill">React</span>
+          <span class="stack-pill">Google Sheets API</span>
+          <span class="stack-pill">n8n</span>
+          <span class="stack-pill">OpenAI / Claude API</span>
+        </div>
+        <div class="stat-row">
+          <div class="stat-item">
+            <div class="icon-badge amber"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z"/></svg></div>
+            <div><strong>5+ років</strong><span>досвіду в продукті</span></div>
+          </div>
+          <div class="stat-item">
+            <div class="icon-badge teal"><svg viewBox="0 0 24 24"><path d="M12 3 5 13h5l-1 8 8-11h-5l1-7z"/></svg></div>
+            <div><strong>Відповідь за день</strong><span>заявка одразу в Telegram</span></div>
+          </div>
+          <div class="stat-item">
+            <div class="icon-badge violet"><svg viewBox="0 0 24 24"><path d="M12 21c-4-2.5-8-6-8-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 5-4 8.5-8 11z"/></svg></div>
+            <div><strong>Україна</strong><span>та за кордоном, віддалено</span></div>
+          </div>
+        </div>
+        <div class="trust-strip">
+          <span class="trust-pill"><span class="pulse-dot"></span> Відповідь за 24 год</span>
+          <span class="trust-pill"><span class="pulse-dot"></span> ТЗ до старту робіт</span>
+          <span class="trust-pill"><span class="pulse-dot"></span> Супровід після запуску</span>
+        </div>
+      </div>
+
+      <div class="hero-photo reveal">
+        <div class="photo-glow" aria-hidden="true"></div>
+        <div class="photo-frame">
+          <img src="assets/photo.jpg" alt="Олександр Каліновський — AI Automation & Product Builder" loading="lazy">
+        </div>
+        <div class="floating-badge"><span class="dot"></span>Відповідаю протягом дня</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="section" id="about">
+    <div class="container about-grid">
+      <div class="reveal">
+        <p class="eyebrow">Про мене</p>
+        <h2>Роблю системи, які знімають рутину з бізнесу</h2>
+        <p>Я — Олександр Каліновський, розробник автоматизації та продуктів на основі AI-агентів. Останні роки працював у сфері мобільних застосунків: будував KPI-дашборди, писав технічні специфікації для AI coding agents та автоматизував документообіг для невеликих команд.</p>
+        <p>До цього — кілька років у виробництві та брендуванні для сільгосптехніки, де навчився доводити продукт від ідеї до готового результату і не боятись деталей. Зараз розвиваю власні продукти й допомагаю бізнесу впроваджувати ботів, автоматизацію та дашборди — без зайвої бюрократії, з фокусом на результат.</p>
+        <div class="chip-row" style="margin-bottom:20px">
+          <span class="stack-pill">5+ років досвіду</span>
+          <span class="stack-pill">Україна · віддалено</span>
+        </div>
+        <a href="#contact" class="btn btn-ghost">Обговорити задачу →</a>
+      </div>
+      <div class="value-list reveal">
+        <div class="value-item">
+          <div class="icon-badge amber"><svg viewBox="0 0 24 24"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></div>
+          <span class="tag">Підхід</span>
+          <h4>Від ідеї до запуску</h4>
+          <p>Беру задачу від технічного завдання до робочої системи в проді, без передачі "на потім".</p>
+        </div>
+        <div class="value-item">
+          <div class="icon-badge teal"><svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="10" rx="2"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1.2"/></svg></div>
+          <span class="tag">Фокус</span>
+          <h4>Боти та автоматизація</h4>
+          <p>Telegram-боти, CRM-інтеграції, документообіг — те, що щодня економить години ручної роботи.</p>
+        </div>
+        <div class="value-item">
+          <div class="icon-badge violet"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg></div>
+          <span class="tag">Продукт</span>
+          <h4>Технічні специфікації</h4>
+          <p>Пишу чіткі ТЗ для AI-агентів та команд розробки — щоб задача була однозначною.</p>
+        </div>
+        <div class="value-item">
+          <div class="icon-badge green"><svg viewBox="0 0 24 24"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/></svg></div>
+          <span class="tag">Дані</span>
+          <h4>Дашборди та KPI</h4>
+          <p>Перетворюю розрізнені таблиці на зрозумілі дашборди для прийняття рішень.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SKILLS -->
+  <section class="section" id="skills">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Навички</p>
+        <h2>Стек для автоматизації та продуктів</h2>
+        <p>Інструменти, якими я щодня користуюсь для розробки ботів, автоматизації та дашбордів.</p>
+      </div>
+      <div class="skills-grid">
+        <div class="skill-card reveal">
+          <div class="icon-badge amber"><svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="10" rx="2"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1.2"/></svg></div>
+          <span class="icon-tag">01 · БОТИ</span>
+          <h4>Боти та автоматизація</h4>
+          <p>Telegram-боти для бізнесу, webhook-автоматизація, робота з документами.</p>
+          <div class="chip-row">
+            <span class="chip">Python</span><span class="chip">Telegram Bot API</span><span class="chip">n8n</span><span class="chip">openpyxl</span>
+          </div>
+        </div>
+        <div class="skill-card reveal">
+          <div class="icon-badge teal"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg></div>
+          <span class="icon-tag">02 · ПРОДУКТ</span>
+          <h4>Продукт &amp; AI-агенти</h4>
+          <p>Технічні специфікації для AI coding agents, продуктовий менеджмент, KPI.</p>
+          <div class="chip-row">
+            <span class="chip">Spec Writing</span><span class="chip">Product Management</span><span class="chip">Roadmapping</span>
+          </div>
+        </div>
+        <div class="skill-card reveal">
+          <div class="icon-badge violet"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="16" x2="12" y2="20"/></svg></div>
+          <span class="icon-tag">03 · ФРОНТЕНД</span>
+          <h4>Frontend &amp; дашборди</h4>
+          <p>Інтерфейси та дашборди для внутрішніх систем і клієнтських продуктів.</p>
+          <div class="chip-row">
+            <span class="chip">React</span><span class="chip">TypeScript</span><span class="chip">HTML/CSS/JS</span>
+          </div>
+        </div>
+        <div class="skill-card reveal">
+          <div class="icon-badge green"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="3" y1="12" x2="21" y2="12"/></svg></div>
+          <span class="icon-tag">04 · БІЗНЕС</span>
+          <h4>Бізнес-автоматизація</h4>
+          <p>CRM-інтеграції, документообіг (рахунки, накладні), аналітика застосунків.</p>
+          <div class="chip-row">
+            <span class="chip">CRM</span><span class="chip">Google Sheets API</span><span class="chip">ASO</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section class="section" id="projects">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Проєкти</p>
+        <h2>Реалізовані проекти</h2>
+        <p>Статус кожного проєкту показує його поточний стан — від специфікації до бойової експлуатації.</p>
+      </div>
+      <div class="projects-grid">
+        <article class="project-card reveal">
+          <div class="project-visual amber"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg></div>
+          <span class="status-badge">ЗАВЕРШЕНО</span>
+          <h3>Бот для автоматизації документообігу</h3>
+          <p>Telegram-бот на Python, який генерує рахунки та накладні з xlsx-шаблонів, економлячи години ручної роботи щотижня.</p>
+          <div class="chip-row"><span class="chip">Python</span><span class="chip">Telegram Bot API</span><span class="chip">openpyxl</span></div>
+        </article>
+        <article class="project-card reveal">
+          <div class="project-visual teal"><svg viewBox="0 0 24 24"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/></svg></div>
+          <span class="status-badge">ЗАВЕРШЕНО</span>
+          <h3>KPI-дашборд для портфеля застосунків</h3>
+          <p>Дашборд, що читає дані з Google Sheets і показує показники ефективності по командах і цілях в реальному часі.</p>
+          <div class="chip-row"><span class="chip">JavaScript</span><span class="chip">Google Sheets API</span><span class="chip">GitHub Pages</span></div>
+        </article>
+        <article class="project-card reveal">
+          <div class="project-visual violet"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></div>
+          <span class="status-badge">ЗАВЕРШЕНО</span>
+          <h3>Архітектура SaaS-платформи</h3>
+          <p>Технічна специфікація та системний дизайн платформи-маркетплейсу з ескроу-платежами та рейтинговою системою.</p>
+          <div class="chip-row"><span class="chip">Product Spec</span><span class="chip">System Design</span></div>
+        </article>
+        <article class="project-card reveal">
+          <div class="project-visual green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="16" x2="12" y2="20"/></svg></div>
+          <span class="status-badge">ЗАВЕРШЕНО</span>
+          <h3>Дашборд для локального AI-агента</h3>
+          <p>Інтерфейс керування локальним AI-агентом у двох візуальних варіантах — світлому та темному.</p>
+          <div class="chip-row"><span class="chip">React</span><span class="chip">UI/UX</span></div>
+        </article>
+        <article class="project-card reveal">
+          <div class="project-visual amber"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="3" y1="12" x2="21" y2="12"/></svg></div>
+          <span class="status-badge">ЗАВЕРШЕНО</span>
+          <h3>Автоматизація каталогу продукції</h3>
+          <p>Python-інструмент, що генерує PDF-каталог із 2000+ дизайн-шаблонів для оптових та роздрібних продажів.</p>
+          <div class="chip-row"><span class="chip">Python</span><span class="chip">ReportLab</span></div>
+        </article>
+        <article class="project-card reveal">
+          <div class="project-visual teal"><svg viewBox="0 0 24 24"><path d="M20 12c0 4.4-3.8 8-8.5 8-1 0-2-.15-2.9-.4L4 21l1.5-4.2A7.8 7.8 0 0 1 3.5 12C3.5 7.6 7.3 4 12 4s8 3.6 8 8z"/></svg></div>
+          <span class="status-badge">ЗАВЕРШЕНО</span>
+          <h3>Сайт-анкета для клієнтського бізнесу</h3>
+          <p>Кастомний сайт із анкетою для клієнтів та інтеграцією в Telegram для швидкого прийому заявок.</p>
+          <div class="chip-row"><span class="chip">JavaScript</span><span class="chip">Telegram Integration</span></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPACT -->
+  <section class="section" id="impact">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Результати</p>
+        <h2>Як автоматизація впливає на процеси</h2>
+        <p>Формат метрик, який наповнюється реальними цифрами клієнтів у міру завершення проєктів.</p>
+      </div>
+      <div class="impact-grid" id="impact-grid"></div>
+      <p class="impact-note">&gt; тут з'являться реальні цифри клієнтів (години зекономленого часу, кількість оброблених заявок тощо) — зараз показано лише формат візуалізації.</p>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="section" id="services">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Послуги</p>
+        <h2>Чим можу бути корисним</h2>
+        <p>Розробка ботів та автоматизація для інтернет-магазинів, сервісів та невеликих команд.</p>
+      </div>
+      <div class="services-grid">
+        <div class="service-card reveal">
+          <div class="icon-badge amber"><svg viewBox="0 0 24 24"><path d="M20 12c0 4.4-3.8 8-8.5 8-1 0-2-.15-2.9-.4L4 21l1.5-4.2A7.8 7.8 0 0 1 3.5 12C3.5 7.6 7.3 4 12 4s8 3.6 8 8z"/></svg></div>
+          <div>
+            <h3>Розробка Telegram-ботів на замовлення</h3>
+            <p>Боти для продажів, підтримки, запису клієнтів, розсилок та внутрішніх процесів компанії.</p>
+          </div>
+        </div>
+        <div class="service-card reveal">
+          <div class="icon-badge teal"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/></svg></div>
+          <div>
+            <h3>Автоматизація бізнес-процесів</h3>
+            <p>Заміна ручних таблиць і повторюваних дій на CRM-боти та автоматичні сценарії.</p>
+          </div>
+        </div>
+        <div class="service-card reveal">
+          <div class="icon-badge violet"><svg viewBox="0 0 24 24"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/></svg></div>
+          <div>
+            <h3>Дашборди та аналітика</h3>
+            <p>KPI-дашборди на основі Google Sheets, Excel-файлів або власної бази даних. Навіть якщо дані зараз розкидані по таблицях — витягуємо їх і показуємо в одному структурованому, зручному дашборді.</p>
+          </div>
+        </div>
+        <div class="service-card reveal">
+          <div class="icon-badge green"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="15" y2="16"/></svg></div>
+          <div>
+            <h3>Технічні специфікації для AI-продуктів</h3>
+            <p>Написання чітких ТЗ для команд розробки та AI coding agents під ваш продукт.</p>
+          </div>
+        </div>
+        <div class="service-card reveal">
+          <div class="icon-badge amber"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+          <div>
+            <h3>CRM замість Excel-таблиць</h3>
+            <p>Перехід від обліку продажів в Excel до повноцінної CRM-системи під вашу компанію — з розгортанням на власних серверах компанії, без прив'язки до сторонніх сервісів.</p>
+          </div>
+        </div>
+        <div class="service-card reveal">
+          <div class="icon-badge teal"><svg viewBox="0 0 24 24"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.7 2.1L22 18l-2.3.9L19 21l-.7-2.1L16 18l2.3-.9L19 15z"/></svg></div>
+          <div>
+            <h3>AI-агенти для обробки інформації</h3>
+            <p>Впроваджую AI-агентів, які допомагають обробляти запити, документи та дані всередині CRM чи дашборду — менеджеру лишається тільки перевірити результат.</p>
+          </div>
+        </div>
+      </div>
+      <p class="service-note">Працюю віддалено з клієнтами з Києва, Львова, Одеси, Харкова, Дніпра, Запоріжжя, Вінниці та всієї України, а також із-за кордону.</p>
+    </div>
+  </section>
+
+  <!-- PROCESS -->
+  <section class="section" id="process">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Як ми працюємо</p>
+        <h2>Простий процес без зайвої бюрократії</h2>
+      </div>
+
+      <div class="pipeline-wrap reveal" style="max-width:640px;margin:0 auto 44px">
+        <svg viewBox="0 0 490 220" role="img" aria-label="Схема: клієнт пише боту, бот передає дані в систему автоматизації, яка оновлює CRM або таблицю">
+          <path class="wire-path" d="M60,110 L180,110"/>
+          <path class="wire-path" d="M200,110 L320,110"/>
+          <path class="wire-path" d="M340,110 L420,110"/>
+
+          <circle class="signal-dot" r="4">
+            <animateMotion dur="2.6s" repeatCount="indefinite" path="M60,110 L180,110"/>
+          </circle>
+          <circle class="signal-dot" r="4">
+            <animateMotion dur="2.6s" begin="0.7s" repeatCount="indefinite" path="M200,110 L320,110"/>
+          </circle>
+          <circle class="signal-dot" r="4">
+            <animateMotion dur="2.6s" begin="1.4s" repeatCount="indefinite" path="M340,110 L420,110"/>
+          </circle>
+
+          <circle class="node-ping amber" cx="40" cy="110" r="24">
+            <animate attributeName="r" values="24;38" dur="2.6s" begin="0s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="0s" repeatCount="indefinite"/>
+          </circle>
+          <circle class="node-ping teal" cx="190" cy="110" r="24">
+            <animate attributeName="r" values="24;38" dur="2.6s" begin="2.6s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="2.6s" repeatCount="indefinite"/>
+          </circle>
+          <circle class="node-ping violet" cx="330" cy="110" r="24">
+            <animate attributeName="r" values="24;38" dur="2.6s" begin="3.3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="3.3s" repeatCount="indefinite"/>
+          </circle>
+          <circle class="node-ping green" cx="430" cy="110" r="24">
+            <animate attributeName="r" values="24;38" dur="2.6s" begin="4s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.55;0" dur="2.6s" begin="4s" repeatCount="indefinite"/>
+          </circle>
+
+          <g>
+            <circle class="node-circle amber" cx="40" cy="110" r="24"/>
+            <g transform="translate(28,98)" class="node-icon amber"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></g>
+            <text x="40" y="160" text-anchor="middle" class="node-label">клієнт</text>
+          </g>
+          <g>
+            <circle class="node-circle teal" cx="190" cy="110" r="24"/>
+            <g transform="translate(178,98)" class="node-icon teal"><rect x="4" y="9" width="16" height="10" rx="2"/><circle cx="9" cy="14" r="1.2" fill="var(--wire)" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="var(--wire)" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1.2"/></g>
+            <text x="190" y="160" text-anchor="middle" class="node-label">бот</text>
+          </g>
+          <g>
+            <circle class="node-circle violet" cx="330" cy="110" r="24"/>
+            <g transform="translate(318,98)" class="node-icon violet"><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/></g>
+            <text x="330" y="160" text-anchor="middle" class="node-label">автоматизація</text>
+          </g>
+          <g>
+            <circle class="node-circle green" cx="430" cy="110" r="24"/>
+            <g transform="translate(418,98)" class="node-icon green"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="10" x2="9" y2="20"/></g>
+            <text x="430" y="160" text-anchor="middle" class="node-label">CRM / таблиця</text>
+          </g>
+        </svg>
+        <p class="pipeline-caption">&gt; повідомлення обробляється автоматично, без ручних кроків</p>
+      </div>
+
+      <ol class="process-list">
+        <li class="process-item reveal"><span class="step-index">01</span><h4>Заявка</h4><p>Заповнюєте форму нижче або пишете напряму — обговорюємо задачу.</p></li>
+        <li class="process-item reveal"><span class="step-index">02</span><h4>Аналіз</h4><p>Уточнюю деталі, формую обсяг робіт та орієнтовні терміни.</p></li>
+        <li class="process-item reveal"><span class="step-index">03</span><h4>Розробка</h4><p>Розробляю та тестую рішення, показую проміжні результати.</p></li>
+        <li class="process-item reveal"><span class="step-index">04</span><h4>Запуск</h4><p>Запускаю в прод і супроводжую перший час експлуатації.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- TRUST -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="eyebrow">Чому обирають мене</p>
+        <h2>Що отримує клієнт, працюючи зі мною</h2>
+      </div>
+      <div class="value-list" style="grid-template-columns:repeat(4,1fr)">
+        <div class="value-item reveal">
+          <div class="icon-badge amber"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg></div>
+          <span class="tag">Прозорість</span>
+          <h4>Чітке ТЗ до старту</h4>
+          <p>Фіксуємо обсяг робіт і терміни письмово, перш ніж почати розробку.</p>
+        </div>
+        <div class="value-item reveal">
+          <div class="icon-badge teal"><svg viewBox="0 0 24 24"><path d="M12 3 5 13h5l-1 8 8-11h-5l1-7z"/></svg></div>
+          <span class="tag">Швидкість</span>
+          <h4>Відповідь протягом дня</h4>
+          <p>Заявка з форми одразу приходить мені в Telegram.</p>
+        </div>
+        <div class="value-item reveal">
+          <div class="icon-badge violet"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3z"/></svg></div>
+          <span class="tag">Супровід</span>
+          <h4>Не зникаю після запуску</h4>
+          <p>Супроводжую перший час роботи бота чи системи в проді.</p>
+        </div>
+        <div class="value-item reveal">
+          <div class="icon-badge green"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6.1.6-4.6 4.1 1.3 6-5.4-3.2-5.4 3.2 1.3-6-4.6-4.1 6.1-.6z"/></svg></div>
+          <span class="tag">Досвід</span>
+          <h4>5+ років у продукті</h4>
+          <p>Автоматизація, дашборди та боти — не перший подібний проєкт.</p>
+        </div>
+      </div>
+      <p style="margin-top:24px;font-size:13.5px;color:var(--text-muted);font-family:var(--font-mono)">
+        &gt; тут з'являться реальні відгуки клієнтів після перших завершених проєктів
+      </p>
+    </div>
+  </section>
+
+  <!-- OFFER -->
+  <section class="section" id="offer">
+    <div class="container">
+      <div class="offer-section reveal">
+        <div>
+          <p class="eyebrow">Пакетна пропозиція</p>
+          <h2>Telegram-бот MVP — від ідеї до запуску за 5 днів</h2>
+          <p>Готове рішення для прийому заявок, продажів або внутрішньої автоматизації — без зайвих зустрічей і нескінченних правок.</p>
+          <ul class="offer-features">
+            <li>Аналіз задачі та письмове ТЗ</li>
+            <li>Розробка та тестування бота</li>
+            <li>Запуск у прод + 7 днів супроводу</li>
+          </ul>
+        </div>
+        <div>
+          <div class="offer-price">від $400 <span>/ проєкт</span></div>
+          <a href="#contact" class="btn btn-primary" style="margin-top:20px">Замовити бота →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="section" id="contact">
+    <div class="container contact-grid">
+      <div class="reveal">
+        <p class="eyebrow">Контакти</p>
+        <h2>Маєте задачу для бота чи автоматизації?</h2>
+        <p>Заповніть форму — заявка одразу приходить мені в Telegram, відповідаю зазвичай протягом дня.</p>
+        <div class="contact-info-item">
+          <div class="ci-icon">@</div>
+          <div><h4>Telegram</h4><p><a href="https://t.me/okdev_tech" style="color:var(--wire)">@okdev_tech</a></p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="ci-icon">✉</div>
+          <div><h4>Email</h4><p><a href="mailto:hello@okdev.win" style="color:var(--wire)">hello@okdev.win</a></p></div>
+        </div>
+        <div class="contact-info-item">
+          <div class="ci-icon">◆</div>
+          <div><h4>GitHub</h4><p><a href="https://github.com/cayz696">github.com/cayz696</a></p></div>
+        </div>
+      </div>
+
+      <form id="contact-form" class="reveal" novalidate
+        data-throttle="Зачекайте кілька секунд перед повторною відправкою."
+        >
+        <p class="form-status"
+           data-required="Заповніть, будь ласка, ім'я, контакт і повідомлення."
+           data-sending="Надсилаю…"
+           data-success="Заявку надіслано! Скоро відповім."
+           data-error="Не вдалося надіслати. Напишіть напряму в Telegram чи на пошту."
+           data-not-configured="Форма ще не підключена до Telegram (потрібно налаштувати assets/script.js)."
+        ></p>
+        <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off">
+        <div class="form-row">
+          <div class="field">
+            <input type="text" id="cf-name" name="name" placeholder=" " required>
+            <label for="cf-name">Ім'я</label>
+          </div>
+          <div class="field">
+            <input type="text" id="cf-contact" name="contact" placeholder=" " required>
+            <label for="cf-contact">Telegram або Email</label>
+          </div>
+        </div>
+        <div>
+          <label for="cf-type">Тип проєкту</label>
+          <div class="select-wrap">
+            <select id="cf-type" name="type">
+              <option>Telegram-бот</option>
+              <option>Автоматизація бізнес-процесів</option>
+              <option>Дашборд / аналітика</option>
+              <option>Веб-сайт</option>
+              <option>Інше</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <textarea id="cf-message" name="message" placeholder=" " required></textarea>
+          <label for="cf-message">Опишіть задачу</label>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="btn btn-primary btn-send">
+            Надіслати заявку
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="4"/><polyline points="8 4 20 4 20 16"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<div class="floating-cta" id="floating-cta">
+  <a href="#contact" class="btn btn-primary">Замовити бота →</a>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="feature-row">
+      <span class="feature-badge"><span class="dot"></span>5+ років досвіду</span>
+      <span class="feature-badge"><span class="dot"></span>Відповідь протягом дня</span>
+      <span class="feature-badge"><span class="dot"></span>Україна · Remote</span>
+    </div>
+    <div class="footer-top">
+      <div class="brand"><span class="dot">●</span> ok<span style="color:var(--text-muted)">.dev</span></div>
+      <div class="footer-links">
+        <a href="#about">Про мене</a>
+        <a href="#skills">Навички</a>
+        <a href="#projects">Проєкти</a>
+        <a href="#services">Послуги</a>
+        <a href="blog/">Блог</a>
+        <a href="#contact">Контакти</a>
+      </div>
+      <div class="socials">
+        <a href="https://t.me/okdev_tech" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24"><path d="M21.5 3.5 2.7 10.8c-1.1.44-1.1 1.05-.2 1.33l4.8 1.5 1.85 5.6c.22.6.37.84.76.84.31 0 .45-.14.63-.31l2.03-1.94 4.5 3.32c.66.36 1.13.17 1.3-.61l3.1-14.6c.24-1.03-.35-1.5-1.17-1.24z"/></svg></a>
+        <a href="https://instagram.com/okdev.win" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.2c3.2 0 3.58.01 4.85.07 1.17.05 1.97.24 2.43.4a4.9 4.9 0 0 1 1.77 1.15 4.9 4.9 0 0 1 1.15 1.77c.16.46.35 1.26.4 2.43.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.24 1.97-.4 2.43a4.9 4.9 0 0 1-1.15 1.77 4.9 4.9 0 0 1-1.77 1.15c-.46.16-1.26.35-2.43.4-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.97-.24-2.43-.4a4.9 4.9 0 0 1-1.77-1.15 4.9 4.9 0 0 1-1.15-1.77c-.16-.46-.35-1.26-.4-2.43-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.24-1.97.4-2.43a4.9 4.9 0 0 1 1.15-1.77A4.9 4.9 0 0 1 4.72 2.67c.46-.16 1.26-.35 2.43-.4C8.42 2.21 8.8 2.2 12 2.2zm0 1.8c-3.15 0-3.5.01-4.73.07-1 .05-1.54.21-1.9.35-.48.19-.82.4-1.18.76-.36.36-.57.7-.76 1.18-.14.36-.3.9-.35 1.9-.06 1.23-.07 1.58-.07 4.74s.01 3.5.07 4.73c.05 1 .21 1.54.35 1.9.19.48.4.82.76 1.18.36.36.7.57 1.18.76.36.14.9.3 1.9.35 1.23.06 1.58.07 4.73.07s3.5-.01 4.73-.07c1-.05 1.54-.21 1.9-.35.48-.19.82-.4 1.18-.76.36-.36.57-.7.76-1.18.14-.36.3-.9.35-1.9.06-1.23.07-1.58.07-4.73s-.01-3.5-.07-4.73c-.05-1-.21-1.54-.35-1.9a3.1 3.1 0 0 0-.76-1.18 3.1 3.1 0 0 0-1.18-.76c-.36-.14-.9-.3-1.9-.35-1.23-.06-1.58-.07-4.73-.07zm0 3.2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6zm0 1.8a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm6.1-2a1.12 1.12 0 1 1-2.24 0 1.12 1.12 0 0 1 2.24 0z"/></svg></a>
+        <a href="https://www.tiktok.com/@okdev_tech" aria-label="TikTok" title="TikTok"><svg viewBox="0 0 24 24"><path d="M16.6 2h-3.3v13.9c0 1.6-1.3 2.9-2.9 2.9a2.9 2.9 0 0 1-2.9-2.9 2.9 2.9 0 0 1 2.9-2.9c.3 0 .6.04.9.12v-3.4a6.3 6.3 0 0 0-.9-.06A6.26 6.26 0 0 0 4.2 15.9a6.26 6.26 0 0 0 6.2 6.26 6.26 6.26 0 0 0 6.2-6.26V8.4a8.2 8.2 0 0 0 4.8 1.55V6.65a4.9 4.9 0 0 1-4.8-4.65z"/></svg></a>
+        <a href="https://github.com/cayz696" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.1 3.29 9.4 7.86 10.94.57.1.79-.25.79-.55 0-.27-.01-1.16-.02-2.1-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.04-.72.08-.7.08-.7 1.16.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.8 1.19 1.83 1.19 3.09 0 4.41-2.69 5.39-5.25 5.67.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .3.21.66.8.55A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg></a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Oleksandr Kalinovskyi</span>
+      <span>UA · <a href="/en/" style="color:var(--wire)">EN</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Дані секції "Результати" — редагуй тільки це, коли з'являться нові кейси.
+   beforeH/afterH — умовна висота стовпця (0-90), afterPct — % ручної роботи,
+   що лишився (показується як підпис "~X%" над стовпцем "після"). */
+window.IMPACT_DATA = [
+  {
+    tag: "Реальний ефект",
+    title: "Обробка рахунків та накладних",
+    beforeH: 90, afterH: 16, afterPct: 18,
+    beforeLabel: "Вручну", afterLabel: "З ботом",
+    ariaLabel: "Порівняння часу обробки документів вручну і з ботом — залишок ручної роботи 18%",
+    caption: "Бот сам розпізнає та вносить дані з рахунків і накладних — ручна робота менеджера з обробки документів скоротилась майже на 100%, під контролем людини лишились лише виняткові випадки."
+  },
+  {
+    tag: "Реальний ефект",
+    title: "Збір даних для KPI-звіту",
+    beforeH: 90, afterH: 11, afterPct: 12,
+    beforeLabel: "Вручну", afterLabel: "Дашборд",
+    ariaLabel: "Порівняння часу збору даних вручну і через дашборд — залишок ручної роботи 12%",
+    caption: "Дашборд сам збирає й оновлює показники з усіх джерел — ручний збір даних для звітів для менеджера-управлінця майже зник, лишилась хвилинна перевірка замість годин щодня."
+  },
+  {
+    tag: "Реальний ефект",
+    title: "Формування каталогу продукції",
+    beforeH: 90, afterH: 22, afterPct: 24,
+    beforeLabel: "Вручну", afterLabel: "Автоматично",
+    ariaLabel: "Порівняння часу формування каталогу вручну і автоматично — залишок ручної роботи 24%",
+    caption: "Каталог оновлюється автоматично з джерела даних — ручне заповнення карток товарів майже повністю зникло з процесу менеджера."
+  }
+];
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/script.js"></script>
+<script>
+(function() {
+  const cta = document.getElementById("floating-cta");
+  if (!cta) return;
+  window.addEventListener("scroll", function() {
+    cta.classList.toggle("is-visible", window.scrollY > 600);
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

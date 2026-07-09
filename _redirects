@@ -1,0 +1,2 @@
+/blog/:slug  /blog/post.html  200
+/en/blog/:slug  /en/blog/post.html  200
