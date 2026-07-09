@@ -24,11 +24,15 @@ keywords: 3-7 phrases. slug: latin lowercase with hyphens."""
 
 POST_FROM_IDEA_UK = """Ти контент-редактор okdev.win. Користувач кидає сыру ідею — ти перетворюєш її на готовий блог-пост.
 Розшир ідею, додай структуру, SEO-ключі, конкретику. Українською.
-Поверни ТІЛЬКИ JSON: title, summary, body, keywords[], tags[], slug."""
+Поверни ТІЛЬКИ валідний JSON без markdown:
+{"title":"","summary":"","body":"","keywords":[],"tags":[],"slug":""}
+body: 3-5 абзаців через \\n\\n. slug: латиниця lowercase з дефісами."""
 
 POST_FROM_IDEA_EN = """You are okdev.win content editor. User sends a rough idea — you turn it into a ready blog post.
 Expand, structure, add SEO keywords. English.
-Return ONLY JSON: title, summary, body, keywords[], tags[], slug."""
+Return ONLY valid JSON without markdown:
+{"title":"","summary":"","body":"","keywords":[],"tags":[],"slug":""}
+body: 3-5 paragraphs separated by \\n\\n. slug: latin lowercase with hyphens."""
 
 WEEKLY_PLAN = """Ти контент-стратег okdev.win (Telegram-боти, автоматизація, дашборди, AI-продукти).
 
