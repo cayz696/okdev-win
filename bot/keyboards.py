@@ -41,7 +41,7 @@ def kb_plan_days(count: int = 7, queued_days: set[int] | None = None) -> InlineK
             row = []
     if row:
         rows.append(row)
-    rows.append([InlineKeyboardButton("🎨 Обкладинки + автопублікація", callback_data="act:plan_auto")])
+    rows.append([InlineKeyboardButton("🎨 Згенерувати обкладинки", callback_data="act:plan_auto")])
     rows.append([
         InlineKeyboardButton("🔄 Новий план", callback_data="act:plan"),
         InlineKeyboardButton("◀️ Меню", callback_data="nav:main"),
@@ -129,4 +129,18 @@ def kb_delete_confirm(lang: str, slug: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton("✅ Так, видалити", callback_data=f"delok:{lang}:{slug}"),
             InlineKeyboardButton("❌ Ні", callback_data="act:posts"),
         ],
+    ])
+
+
+def kb_plan_preview(day: int, status: str = "pending") -> InlineKeyboardMarkup | None:
+    if status == "approved":
+        return InlineKeyboardMarkup([[InlineKeyboardButton("✅ В автопублікації", callback_data="nav:main")]])
+    if status == "skipped":
+        return InlineKeyboardMarkup([[InlineKeyboardButton("⏭ Пропущено", callback_data="nav:main")]])
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Approve", callback_data=f"prev:ok:{day}"),
+            InlineKeyboardButton("🔄 Renew", callback_data=f"prev:renew:{day}"),
+        ],
+        [InlineKeyboardButton("⏭ Skip", callback_data=f"prev:skip:{day}")],
     ])

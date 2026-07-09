@@ -5,7 +5,7 @@ import asyncio
 import io
 import logging
 
-from telegram import Update
+from telegram import InputMediaPhoto, Update
 from telegram.error import BadRequest
 from telegram.ext import (
     Application,
@@ -27,6 +27,7 @@ from keyboards import (
     kb_lang,
     kb_main,
     kb_plan_days,
+    kb_plan_preview,
     kb_posts_list,
     kb_schedule_list,
     kb_settings,
@@ -34,7 +35,15 @@ from keyboards import (
 from models import Draft
 from posts_admin import PostsAdminError, delete_site_post, list_site_posts, post_admin_url
 from publisher import PublishError, publish_draft
-from schedule_storage import add_to_queue, get_pending, is_plan_day_queued, remove_from_queue
+from plan_previews import (
+    clear_previews,
+    dict_to_draft,
+    get_preview,
+    remove_preview,
+    set_preview,
+    update_preview_status,
+)
+from schedule_storage import add_to_queue, get_pending, remove_from_queue
 from scheduler import process_due_posts
 from storage import clear_channel_id, get_channel_id, set_channel_id
 
@@ -114,7 +123,7 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
             update,
             "📆 <b>Авторозклад</b>\n\nЧерга порожня.\n\n"
             "Згенеруй <b>📅 План на тиждень</b> → "
-            "<b>🎨 Обкладинки + автопублікація</b>",
+            "<b>🎨 Згенерувати обкладинки</b> → Approve",
             reply_markup=kb_back_main(),
             parse_mode="HTML",
         )
@@ -138,9 +147,26 @@ def _queued_plan_days() -> set[int]:
     return {i.get("plan_day") for i in get_pending() if i.get("plan_day")}
 
 
-async def auto_queue_weekly_plan(bot, chat_id: int, user_id: int, plan: list[dict]) -> None:
-    await bot.send_message(chat_id, "🎨 Генерую обкладинки для 7 постів…")
-    queued = 0
+def _preview_caption(draft: Draft, day: int, note: str = "") -> str:
+    when = draft.scheduled_at[:16].replace("T", " ") if draft.scheduled_at else "—"
+    extra = f"\n\n{note}" if note else ""
+    summary = (draft.summary or "")[:200]
+    return (
+        f"📅 <b>День {day}</b> · {draft.lang}\n"
+        f"<b>{draft.title}</b>\n"
+        f"🕐 {when}\n"
+        f"{summary}{extra}"
+    )
+
+
+async def preview_weekly_plan(bot, chat_id: int, plan: list[dict]) -> None:
+    clear_previews()
+    await bot.send_message(
+        chat_id,
+        "🎨 Генерую обкладинки…\n"
+        "Під кожною фото: <b>Approve</b> · <b>Renew</b> · <b>Skip</b>",
+        parse_mode="HTML",
+    )
     for p in plan:
         draft = Draft.from_ai(p)
         day = p.get("day", 0)
@@ -148,28 +174,24 @@ async def auto_queue_weekly_plan(bot, chat_id: int, user_id: int, plan: list[dic
             image_bytes, mime = await generate_cover_image(draft)
             draft.image_bytes = image_bytes
             draft.image_mime = mime
-            add_to_queue(
-                draft,
-                plan_day=day,
-                notify_user_id=user_id,
-                to_site=True,
-                to_channel=True,
-            )
-            queued += 1
-            await bot.send_message(
+            set_preview(day, draft)
+            await bot.send_photo(
                 chat_id,
-                f"✅ День {day}: <b>{draft.title[:60]}</b>\n🕐 {draft.scheduled_at[:16]}",
+                photo=image_bytes,
+                caption=_preview_caption(draft, day),
                 parse_mode="HTML",
+                reply_markup=kb_plan_preview(day),
             )
-        except (ImageError, ValueError) as exc:
+        except ImageError as exc:
             await bot.send_message(chat_id, f"❌ День {day}: {exc}")
 
     await bot.send_message(
         chat_id,
-        f"📆 <b>Автопублікація активна</b>\n\n"
-        f"В черзі: <b>{queued}/7</b> постів.\n"
-        f"Кожного дня о 09:00 (за датою плану) — сайт + канал.\n"
-        f"Ти отримаєш повідомлення після кожної публікації.",
+        "👆 <b>Переглянь обкладинки вище</b>\n\n"
+        "✅ Approve — в автопублікацію (сайт + канал)\n"
+        "🔄 Renew — нова обкладинка\n"
+        "⏭ Skip — пропустити цей день\n\n"
+        "Після Approve бот публікує автоматично о 09:00.",
         parse_mode="HTML",
         reply_markup=kb_back_main(),
     )
@@ -312,7 +334,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for p in posts:
                     lines.append(f"<b>День {p['day']}</b> [{p.get('lang','uk')}] {p.get('title','')}")
                 lines.append(
-                    "\n<b>Швидко:</b> 🎨 Обкладинки + автопублікація — все одразу.\n"
+                    "\n<b>Швидко:</b> 🎨 Згенерувати обкладинки → Approve кожну.\n"
                     "<b>Вручну:</b> обери день → обкладинка → ⏰ В автопублікацію."
                 )
                 await reply_or_edit(
@@ -334,13 +356,10 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
                 chat_id = update.effective_chat.id
-                user_id = update.effective_user.id
-                asyncio.create_task(
-                    auto_queue_weekly_plan(context.bot, chat_id, user_id, plan)
-                )
+                asyncio.create_task(preview_weekly_plan(context.bot, chat_id, plan))
                 await reply_or_edit(
                     update,
-                    "⏳ Запускаю автопублікацію…\nДивись повідомлення нижче 👇",
+                    "⏳ Генерую обкладинки…\nФото зʼявляться нижче 👇",
                     answer=False,
                 )
             elif value == "draft":
@@ -361,6 +380,69 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await show_posts_menu(update, context)
             elif value == "schedule":
                 await show_schedule_menu(update, context)
+
+        elif action == "prev":
+            cmd, _, day_str = value.partition(":")
+            try:
+                day = int(day_str)
+            except ValueError:
+                await reply_or_edit(update, "Невірний день", reply_markup=kb_back_main(), answer=False)
+                return
+
+            preview = get_preview(day)
+            if not preview and cmd != "skip":
+                await safe_answer(q, "Превʼю не знайдено", show_alert=True)
+                return
+
+            draft = dict_to_draft(preview) if preview else Draft()
+
+            if cmd == "ok":
+                if not draft.image_bytes or not draft.scheduled_at:
+                    await safe_answer(q, "Немає фото або дати", show_alert=True)
+                    return
+                await safe_answer(q, "✅ В розкладі")
+                add_to_queue(
+                    draft,
+                    plan_day=day,
+                    notify_user_id=update.effective_user.id,
+                    to_site=True,
+                    to_channel=True,
+                )
+                update_preview_status(day, "approved")
+                await q.edit_message_caption(
+                    caption=_preview_caption(draft, day, "✅ В автопублікації"),
+                    parse_mode="HTML",
+                    reply_markup=kb_plan_preview(day, "approved"),
+                )
+            elif cmd == "skip":
+                await safe_answer(q, "⏭ Пропущено")
+                if preview:
+                    remove_preview(day)
+                    await q.edit_message_caption(
+                        caption=_preview_caption(draft, day, "⏭ Пропущено"),
+                        parse_mode="HTML",
+                        reply_markup=kb_plan_preview(day, "skipped"),
+                    )
+            elif cmd == "renew":
+                if not draft.title:
+                    await safe_answer(q, "Превʼю не знайдено", show_alert=True)
+                    return
+                await safe_answer(q, "🔄 Генерую…")
+                try:
+                    image_bytes, mime = await generate_cover_image(draft)
+                    draft.image_bytes = image_bytes
+                    draft.image_mime = mime
+                    set_preview(day, draft)
+                    await q.edit_message_media(
+                        media=InputMediaPhoto(
+                            media=image_bytes,
+                            caption=_preview_caption(draft, day),
+                            parse_mode="HTML",
+                        ),
+                        reply_markup=kb_plan_preview(day),
+                    )
+                except ImageError as exc:
+                    await q.answer(str(exc)[:180], show_alert=True)
 
         elif action == "sched":
             if value.startswith("cancel:"):
