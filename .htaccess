@@ -1,0 +1,19 @@
+RewriteEngine On
+
+# okdev.win (без www) → https://www.okdev.win
+RewriteCond %{HTTP_HOST} ^okdev\.win$ [NC]
+RewriteRule ^ https://www.okdev.win%{REQUEST_URI} [L,R=301]
+
+# http → https (nginx передає X-Forwarded-Proto; не чіпати %{HTTPS})
+RewriteCond %{HTTP:X-Forwarded-Proto} =http [NC]
+RewriteCond %{HTTP_HOST} ^www\.okdev\.win$ [NC]
+RewriteRule ^ https://www.okdev.win%{REQUEST_URI} [L,R=301]
+
+# Блог: /blog/slug/ → blog/post.html (контент з Worker API)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^blog/([^/]+)/?$ blog/post.html [L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^en/blog/([^/]+)/?$ en/blog/post.html [L]

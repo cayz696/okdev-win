@@ -89,8 +89,8 @@ async def publish_to_site(draft: Draft) -> dict:
     except Exception:
         data = {}
 
-    if not res.is_success or not data.get("ok"):
-        raise PublishError(data.get("error", res.text[:200]))
+    if not res.is_success or not data.get("ok") or not data.get("slug"):
+        raise PublishError(data.get("error", "Worker не зберіг пост — перевір WORKER_URL і PUBLISH_SECRET"))
     return data
 
 
@@ -151,7 +151,7 @@ async def publish_draft(
             data = await publish_to_site(draft)
             result.site_ok = True
             result.site_slug = data.get("slug", draft.slug)
-            result.site_url = draft.post_url()
+            result.site_url = f"{SITE_DOMAIN.rstrip('/')}{draft.post_url()}"
             if data.get("imageId"):
                 result.site_image = True
         except PublishError as exc:
