@@ -4,3 +4,8 @@ tailwind-preview.html
 *.log
 .env
 worker/.wrangler/
+worker/node_modules/
+bot/data/settings.json
+bot/.venv/
+bot/__pycache__/
+__pycache__/

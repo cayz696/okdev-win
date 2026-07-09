@@ -1,57 +1,419 @@
 #!/usr/bin/env python3
-"""
-Telegram bot for publishing blog posts to okdev.win via Cloudflare Worker.
+"""okdev.win blog bot — inline UI, AI (OpenRouter), site + Telegram channel publishing."""
 
-Commands:
-  /post uk|en  — start a draft
-  Send photo + caption OR text with fields (title, summary, keywords, tags, slug)
-  /publish      — publish draft to site
-  /schedule ISO — set scheduledAt (e.g. 2026-07-10T09:00:00+03:00)
-  /cancel       — discard draft
-"""
-
-import base64
 import io
-import os
-import re
-from dataclasses import dataclass, field
+import logging
 
-import requests
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
-try:
-    from telegram import Update
-    from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-except ImportError:
-    raise SystemExit("Install: pip install python-telegram-bot requests python-dotenv")
+from ai_client import AIError, generate_post, generate_weekly_plan
+from config import ALLOWED_IDS, TELEGRAM_BOT_TOKEN
+from keyboards import (
+    kb_back_main,
+    kb_cancel,
+    kb_draft_actions,
+    kb_lang,
+    kb_main,
+    kb_plan_days,
+    kb_settings,
+)
+from models import Draft
+from publisher import PublishError, publish_draft
+from storage import clear_channel_id, get_channel_id, set_channel_id
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-WORKER_URL = os.getenv("WORKER_URL", "").rstrip("/")
-PUBLISH_SECRET = os.getenv("PUBLISH_SECRET", "")
-ALLOWED_IDS = {int(x) for x in os.getenv("ALLOWED_USER_IDS", "").split(",") if x.strip()}
-
-
-@dataclass
-class Draft:
-    lang: str = "uk"
-    title: str = ""
-    summary: str = ""
-    body: str = ""
-    keywords: list = field(default_factory=list)
-    tags: list = field(default_factory=list)
-    slug: str = ""
-    scheduled_at: str = ""
-    image_bytes: bytes = b""
-    image_mime: str = "image/jpeg"
+logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    level=logging.INFO,
+)
+log = logging.getLogger("okdev-bot")
 
 
 def allowed(user_id: int) -> bool:
     return not ALLOWED_IDS or user_id in ALLOWED_IDS
 
 
-def parse_fields(text: str) -> dict:
+def get_draft(context: ContextTypes.DEFAULT_TYPE) -> Draft:
+    if "draft" not in context.user_data:
+        context.user_data["draft"] = Draft()
+    return context.user_data["draft"]
+
+
+def clear_draft(context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data.pop("draft", None)
+    context.user_data.pop("mode", None)
+
+
+def push_screen(context: ContextTypes.DEFAULT_TYPE, screen: str) -> None:
+    stack = context.user_data.setdefault("nav_stack", [])
+    if not stack or stack[-1] != screen:
+        stack.append(screen)
+
+
+def pop_screen(context: ContextTypes.DEFAULT_TYPE) -> str:
+    stack = context.user_data.get("nav_stack", [])
+    if len(stack) > 1:
+        stack.pop()
+    return stack[-1] if stack else "main"
+
+
+async def reply_or_edit(update: Update, text: str, reply_markup=None, parse_mode=None):
+    if update.callback_query:
+        await update.callback_query.answer()
+        try:
+            await update.callback_query.edit_message_text(
+                text, reply_markup=reply_markup, parse_mode=parse_mode
+            )
+        except Exception:
+            await update.callback_query.message.reply_text(
+                text, reply_markup=reply_markup, parse_mode=parse_mode
+            )
+    elif update.message:
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+
+
+async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["nav_stack"] = ["main"]
+    context.user_data.pop("mode", None)
+    await reply_or_edit(
+        update,
+        "🏠 <b>okdev.win — блог-бот</b>\n\n"
+        "Обери дію кнопками нижче.\n"
+        "AI пише пости → ти публікуєш на сайт і/або в канал.",
+        reply_markup=kb_main(),
+        parse_mode="HTML",
+    )
+
+
+async def show_draft(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    draft = get_draft(context)
+    if not draft.title and not draft.body:
+        await reply_or_edit(update, "Чернетка порожня.", reply_markup=kb_main())
+        return
+    push_screen(context, "draft")
+    await reply_or_edit(
+        update,
+        draft.preview_text() + "\n\n<b>Куди публікувати?</b>",
+        reply_markup=kb_draft_actions(),
+        parse_mode="HTML",
+    )
+
+
+async def run_ai_generate(update: Update, context: ContextTypes.DEFAULT_TYPE, from_idea: bool = False):
+    draft = get_draft(context)
+    topic = draft.source_topic or context.user_data.get("pending_topic", "")
+    if not topic:
+        await reply_or_edit(update, "Немає теми. Почни спочатку.", reply_markup=kb_main())
+        return
+
+    await reply_or_edit(update, "⏳ AI генерує пост…", reply_markup=None)
+    try:
+        post = await generate_post(draft.lang, topic, from_idea=from_idea)
+        new = Draft.from_ai(post)
+        new.image_bytes = draft.image_bytes
+        new.image_mime = draft.image_mime
+        context.user_data["draft"] = new
+        await show_draft(update, context)
+    except AIError as exc:
+        await reply_or_edit(
+            update,
+            f"❌ AI: {exc}",
+            reply_markup=kb_draft_actions() if draft.title else kb_main(),
+        )
+
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not allowed(update.effective_user.id):
+        return
+    clear_draft(context)
+    await show_main_menu(update, context)
+
+
+async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not allowed(update.effective_user.id):
+        await update.callback_query.answer("Доступ заборонено", show_alert=True)
+        return
+
+    q = update.callback_query
+    data = q.data or ""
+    action, _, value = data.partition(":")
+
+    try:
+        if action == "nav":
+            if value == "main":
+                await show_main_menu(update, context)
+            elif value == "back":
+                screen = pop_screen(context)
+                if screen == "draft":
+                    await show_draft(update, context)
+                else:
+                    await show_main_menu(update, context)
+
+        elif action == "act":
+            if value == "ai":
+                push_screen(context, "lang")
+                context.user_data["mode"] = "topic"
+                context.user_data["from_idea"] = False
+                await reply_or_edit(
+                    update,
+                    "📝 <b>AI-пост</b>\n\nОбери мову, потім надішли тему.",
+                    reply_markup=kb_lang(),
+                    parse_mode="HTML",
+                )
+            elif value == "idea":
+                push_screen(context, "lang")
+                context.user_data["mode"] = "idea"
+                context.user_data["from_idea"] = True
+                await reply_or_edit(
+                    update,
+                    "💡 <b>Моя ідея</b>\n\nОбери мову → надішли сыру ідею одним повідомленням.\n"
+                    "AI розгорне її в готовий пост.",
+                    reply_markup=kb_lang(),
+                    parse_mode="HTML",
+                )
+            elif value == "plan":
+                await reply_or_edit(update, "⏳ Генерую план на 7 днів…")
+                posts = await generate_weekly_plan()
+                context.user_data["content_plan"] = posts
+                lines = ["📅 <b>Контент-план на тиждень</b>\n"]
+                for p in posts:
+                    lines.append(f"<b>День {p['day']}</b> [{p.get('lang','uk')}] {p.get('title','')}")
+                await reply_or_edit(
+                    update,
+                    "\n".join(lines) + "\n\nОбери день:",
+                    reply_markup=kb_plan_days(),
+                    parse_mode="HTML",
+                )
+            elif value == "draft":
+                await show_draft(update, context)
+            elif value == "settings":
+                ch = get_channel_id() or "не налаштовано"
+                await reply_or_edit(
+                    update,
+                    f"⚙️ <b>Налаштування</b>\n\n"
+                    f"📢 Канал: <code>{ch}</code>\n"
+                    f"🤖 Модель: OpenRouter Gemini 3.1 Flash Lite\n"
+                    f"📝 Промпти: <code>bot/prompts.py</code>\n\n"
+                    f"Додай бота адміном каналу з правом публікації.",
+                    reply_markup=kb_settings(ch),
+                    parse_mode="HTML",
+                )
+
+        elif action == "lang":
+            draft = get_draft(context)
+            draft.lang = value if value in ("uk", "en") else "uk"
+            context.user_data["draft"] = draft
+            mode = context.user_data.get("mode", "topic")
+            if mode == "idea":
+                context.user_data["mode"] = "idea_text"
+                await reply_or_edit(
+                    update,
+                    f"💡 Надішли свою ідею ({draft.lang}):",
+                    reply_markup=kb_cancel(),
+                )
+            else:
+                context.user_data["mode"] = "topic_text"
+                await reply_or_edit(
+                    update,
+                    f"📝 Надішли тему поста ({draft.lang}):",
+                    reply_markup=kb_cancel(),
+                )
+
+        elif action == "plan":
+            day = int(value)
+            plan = context.user_data.get("content_plan", [])
+            post = next((p for p in plan if p.get("day") == day), None)
+            if not post:
+                await q.answer("День не знайдено", show_alert=True)
+                return
+            context.user_data["draft"] = Draft.from_ai(post)
+            await show_draft(update, context)
+
+        elif action == "pub":
+            draft = get_draft(context)
+            if not draft.title or not draft.body:
+                await q.answer("Чернетка порожня", show_alert=True)
+                return
+
+            to_site = value in ("all", "site")
+            to_channel = value in ("all", "channel")
+            targets = set()
+            if to_site:
+                targets.add("site")
+            if to_channel:
+                targets.add("channel")
+
+            await q.answer("Публікую…")
+            try:
+                result = await publish_draft(
+                    context.bot,
+                    draft,
+                    to_site=to_site,
+                    to_channel=to_channel,
+                    channel_id=get_channel_id(),
+                )
+                # Очищаємо чернетку лише якщо всі обрані цілі успішні
+                success = (
+                    (not to_site or result.site_ok) and
+                    (not to_channel or result.channel_ok)
+                )
+                if success:
+                    clear_draft(context)
+                    markup = kb_main()
+                else:
+                    markup = kb_draft_actions()
+
+                await reply_or_edit(
+                    update,
+                    result.summary_html(targets),
+                    reply_markup=markup,
+                    parse_mode="HTML",
+                )
+            except PublishError as exc:
+                await reply_or_edit(
+                    update,
+                    str(exc),
+                    reply_markup=kb_draft_actions(),
+                    parse_mode="HTML",
+                )
+
+        elif action == "draft":
+            if value == "cancel":
+                clear_draft(context)
+                await show_main_menu(update, context)
+            elif value == "regen":
+                await run_ai_generate(update, context, from_idea=context.user_data.get("from_idea", False))
+            elif value == "edit":
+                context.user_data["mode"] = "edit"
+                await reply_or_edit(
+                    update,
+                    "✏️ Надішли текст з полями:\n"
+                    "<code>title: ...\nsummary: ...\nkeywords: a, b\ntags: T1\nslug: url-slug\n\nТекст статті.</code>",
+                    reply_markup=kb_cancel(),
+                    parse_mode="HTML",
+                )
+            elif value == "photo":
+                context.user_data["mode"] = "photo"
+                await reply_or_edit(
+                    update,
+                    "📷 Надішли фото (можна з підписом — title/summary в caption):",
+                    reply_markup=kb_cancel(),
+                )
+            elif value == "schedule":
+                context.user_data["mode"] = "schedule"
+                await reply_or_edit(
+                    update,
+                    "🗓 Надішли дату:\n<code>2026-07-10T09:00:00+03:00</code>",
+                    reply_markup=kb_cancel(),
+                    parse_mode="HTML",
+                )
+
+        elif action == "set":
+            if value == "channel":
+                context.user_data["mode"] = "channel"
+                await reply_or_edit(
+                    update,
+                    "📢 Надішли @username каналу або chat_id (-100…):\n"
+                    "Бот має бути <b>адміном</b> каналу.",
+                    reply_markup=kb_cancel(),
+                    parse_mode="HTML",
+                )
+            elif value == "channel_clear":
+                clear_channel_id()
+                await reply_or_edit(update, "Канал видалено.", reply_markup=kb_settings(""))
+
+    except (AIError, PublishError) as exc:
+        log.warning("User action error: %s", exc)
+        await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main())
+    except Exception as exc:
+        log.exception("Callback error: %s", exc)
+        await reply_or_edit(
+            update,
+            f"❌ Помилка: {exc}\n\nСпробуй ще раз або повернись у меню.",
+            reply_markup=kb_back_main(),
+        )
+
+
+async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not allowed(update.effective_user.id):
+        return
+    mode = context.user_data.get("mode")
+    text = (update.message.text or "").strip()
+    if not text:
+        return
+
+    try:
+        if mode == "channel":
+            set_channel_id(text)
+            try:
+                await context.bot.get_chat(text)
+            except Exception:
+                await update.message.reply_text(
+                    "⚠️ Канал збережено, але перевір що бот — адмін.\n"
+                    "Якщо @username — спробуй chat_id -100…",
+                    reply_markup=kb_settings(text),
+                )
+                context.user_data.pop("mode", None)
+                return
+            context.user_data.pop("mode", None)
+            await update.message.reply_text(
+                f"✅ Канал збережено: <code>{text}</code>",
+                reply_markup=kb_settings(text),
+                parse_mode="HTML",
+            )
+            return
+
+        if mode == "schedule":
+            get_draft(context).scheduled_at = text
+            context.user_data.pop("mode", None)
+            await update.message.reply_text(f"🗓 Заплановано: {text}", reply_markup=kb_draft_actions())
+            return
+
+        if mode in ("topic_text", "idea_text"):
+            draft = get_draft(context)
+            draft.source_topic = text
+            context.user_data["draft"] = draft
+            context.user_data.pop("mode", None)
+            await run_ai_generate(update, context, from_idea=(mode == "idea_text"))
+            return
+
+        if mode == "edit":
+            draft = get_draft(context)
+            parsed = _parse_fields(text)
+            if parsed.get("title"):
+                draft.title = parsed["title"]
+            if parsed.get("summary"):
+                draft.summary = parsed["summary"]
+            if parsed.get("body"):
+                draft.body = parsed["body"]
+            if parsed.get("keywords"):
+                draft.keywords = parsed["keywords"]
+            if parsed.get("tags"):
+                draft.tags = parsed["tags"]
+            if parsed.get("slug"):
+                draft.slug = parsed["slug"]
+            context.user_data.pop("mode", None)
+            await show_draft(update, context)
+            return
+
+        await update.message.reply_text("Обери дію в меню 👇", reply_markup=kb_main())
+
+    except (AIError, PublishError) as exc:
+        await update.message.reply_text(f"❌ {exc}", reply_markup=kb_back_main())
+    except Exception as exc:
+        log.exception("Text handler error")
+        await update.message.reply_text(f"❌ {exc}", reply_markup=kb_back_main())
+
+
+def _parse_fields(text: str) -> dict:
+    import re
     fields = {}
     body_lines = []
     for line in text.split("\n"):
@@ -72,99 +434,13 @@ def parse_fields(text: str) -> dict:
     return fields
 
 
-def get_draft(context: ContextTypes.DEFAULT_TYPE) -> Draft:
-    if "draft" not in context.user_data:
-        context.user_data["draft"] = Draft()
-    return context.user_data["draft"]
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not allowed(update.effective_user.id):
-        return
-    await update.message.reply_text(
-        "Бот публікації блогу okdev.win\n\n"
-        "/post uk — новий пост (UA)\n"
-        "/post en — new post (EN)\n"
-        "Надішли фото з підписом або текст з полями title/summary/keywords/tags/slug\n"
-        "/publish — опублікувати\n"
-        "/schedule 2026-07-10T09:00:00+03:00 — запланувати\n"
-        "/cancel — скасувати"
-    )
-
-
-async def cmd_post(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not allowed(update.effective_user.id):
-        return
-    lang = (context.args[0] if context.args else "uk").lower()
-    if lang not in ("uk", "en"):
-        lang = "uk"
-    context.user_data["draft"] = Draft(lang=lang)
-    await update.message.reply_text(f"Чернетка ({lang}). Надішли фото+підпис або текст з полями.")
-
-
-async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not allowed(update.effective_user.id):
-        return
-    context.user_data.pop("draft", None)
-    await update.message.reply_text("Чернетку скасовано.")
-
-
-async def cmd_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not allowed(update.effective_user.id):
-        return
-    draft = get_draft(context)
-    if context.args:
-        draft.scheduled_at = " ".join(context.args)
-        await update.message.reply_text(f"Заплановано: {draft.scheduled_at}")
-    else:
-        await update.message.reply_text("Вкажи дату: /schedule 2026-07-10T09:00:00+03:00")
-
-
-async def cmd_publish(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not allowed(update.effective_user.id):
-        return
-    draft = get_draft(context)
-    if not draft.title or not draft.body:
-        await update.message.reply_text("Потрібні title і body. Надішли текст з полями.")
-        return
-    if not WORKER_URL or not PUBLISH_SECRET:
-        await update.message.reply_text("WORKER_URL або PUBLISH_SECRET не налаштовані в .env")
-        return
-
-    payload = {
-        "lang": draft.lang,
-        "title": draft.title,
-        "summary": draft.summary or draft.body[:200],
-        "body": draft.body,
-        "keywords": draft.keywords,
-        "tags": draft.tags,
-        "slug": draft.slug,
-    }
-    if draft.scheduled_at:
-        payload["scheduledAt"] = draft.scheduled_at
-    if draft.image_bytes:
-        b64 = base64.b64encode(draft.image_bytes).decode()
-        payload["imageBase64"] = f"data:{draft.image_mime};base64,{b64}"
-        payload["imageMime"] = draft.image_mime
-
-    res = requests.post(
-        f"{WORKER_URL}/posts",
-        json=payload,
-        headers={"X-Publish-Secret": PUBLISH_SECRET, "Content-Type": "application/json"},
-        timeout=30,
-    )
-    data = res.json() if res.headers.get("content-type", "").startswith("application/json") else {}
-    if res.ok and data.get("ok"):
-        slug = data.get("slug", draft.slug)
-        await update.message.reply_text(f"✅ Опубліковано!\nSlug: {slug}\nURL: /blog/{slug}/")
-        context.user_data.pop("draft", None)
-    else:
-        await update.message.reply_text(f"❌ Помилка: {data.get('error', res.text)}")
-
-
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not allowed(update.effective_user.id):
         return
+    if context.user_data.get("mode") not in ("photo", None) and not get_draft(context).title:
+        await update.message.reply_text("Спочатку створи пост або натисни 📷 в чернетці.", reply_markup=kb_main())
+        return
+
     draft = get_draft(context)
     photo = update.message.photo[-1]
     file = await photo.get_file()
@@ -173,52 +449,49 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     draft.image_bytes = buf.getvalue()
     draft.image_mime = "image/jpeg"
     if update.message.caption:
-        await apply_text(draft, update.message.caption)
-        await update.message.reply_text(f"Фото + текст збережено. Title: {draft.title or '(не вказано)'}\n/publish — опублікувати")
+        parsed = _parse_fields(update.message.caption)
+        if parsed.get("title"):
+            draft.title = parsed["title"]
+        if parsed.get("summary"):
+            draft.summary = parsed["summary"]
+        if parsed.get("body"):
+            draft.body = parsed["body"]
+    context.user_data.pop("mode", None)
+    context.user_data["draft"] = draft
+    await update.message.reply_text("📷 Фото додано.", reply_markup=kb_draft_actions())
+    await show_draft(update, context)
 
 
-async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not allowed(update.effective_user.id):
-        return
-    draft = get_draft(context)
-    await apply_text(draft, update.message.text)
-    await update.message.reply_text(
-        f"Збережено.\nTitle: {draft.title or '—'}\nKeywords: {', '.join(draft.keywords) or '—'}\n/publish — опублікувати"
-    )
-
-
-async def apply_text(draft: Draft, text: str):
-    parsed = parse_fields(text)
-    if parsed.get("title"):
-        draft.title = parsed["title"]
-    if parsed.get("summary"):
-        draft.summary = parsed["summary"]
-    if parsed.get("body"):
-        draft.body = parsed["body"]
-    if parsed.get("keywords"):
-        draft.keywords = parsed["keywords"]
-    if parsed.get("tags"):
-        draft.tags = parsed["tags"]
-    if parsed.get("slug"):
-        draft.slug = parsed["slug"]
-    if parsed.get("scheduled_at"):
-        draft.scheduled_at = parsed["scheduled_at"]
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    log.error("Unhandled exception", exc_info=context.error)
+    if isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "⚠️ Щось пішло не так. Спробуй ще раз або /start",
+                reply_markup=kb_back_main(),
+            )
+        except Exception:
+            pass
 
 
 def main():
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not token:
-        raise SystemExit("Set TELEGRAM_BOT_TOKEN in .env")
-    app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("post", cmd_post))
-    app.add_handler(CommandHandler("publish", cmd_publish))
-    app.add_handler(CommandHandler("schedule", cmd_schedule))
-    app.add_handler(CommandHandler("cancel", cmd_cancel))
+    if not TELEGRAM_BOT_TOKEN:
+        raise SystemExit("TELEGRAM_BOT_TOKEN не налаштований у .env")
+
+    app = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .build()
+    )
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("menu", cmd_start))
+    app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
-    print("Blog publish bot running…")
-    app.run_polling()
+    app.add_error_handler(error_handler)
+
+    log.info("okdev.win blog bot started (inline UI, async)")
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":

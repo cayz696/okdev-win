@@ -1,124 +1,73 @@
-# Telegram-бот для публікації блогу
+# okdev.win Blog Bot
 
-Окремий бот (на VPS або локально) публікує пости на сайт через Cloudflare Worker API.
-Сайт залишається статичним — бот лише «скидає» схвалений контент у KV-сховище.
+Telegram-бот з **інлайн-кнопками**, AI (OpenRouter / Gemini 3.1 Flash Lite), публікація на **сайт + канал**.
 
-## Налаштування
+## Швидкий старт
 
-1. Задеплой Worker (`worker/README.md`) з KV namespace і секретом `PUBLISH_SECRET`.
-2. Створи Telegram-бота через [@BotFather](https://t.me/BotFather).
-3. Скопіюй `.env.example` → `.env` і заповни значення.
-4. Запусти: `python publish_bot.py`
+| Платформа | Інструкція |
+|-----------|------------|
+| **Windows Server** | [`DEPLOY-WINDOWS.md`](DEPLOY-WINDOWS.md) |
+| Linux VPS | `portfolio-bot.service.example` |
 
-### Автозапуск на VPS (systemd)
-
-```bash
-# На сервері
+```powershell
+# Windows
 cd bot
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # заповни значення
-chmod 600 .env
-
-# Підстав свої шляхи в portfolio-bot.service.example
-sudo cp portfolio-bot.service.example /etc/systemd/system/portfolio-bot.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now portfolio-bot
-sudo systemctl status portfolio-bot
+.\install.ps1
+# заповни .env
+.\run.ps1
 ```
 
-## Команди бота
+## Кнопки бота (без команд)
 
-| Команда | Опис |
-|---------|------|
-| `/start` | Привітання та інструкція |
-| `/post uk` або `/post en` | Почати новий пост (далі — фото або текст) |
-| `/publish` | Опублікувати чернетку на сайт |
-| `/schedule 2026-07-10T09:00:00+03:00` | Запланувати публікацію |
-| `/cancel` | Скасувати чернетку |
+`/start` → головне меню:
 
-## Формат поста
+| Кнопка | Дія |
+|--------|-----|
+| 📝 AI-пост | Мова → тема → AI → превʼю → публікація |
+| 💡 Моя ідея | Мова → ідея → AI розгортає → превʼю |
+| 📅 План на тиждень | AI генерує 7 днів → обери день |
+| 📋 Чернетка | Перегляд поточної |
+| ⚙️ Налаштування | Telegram-канал для постингу |
 
-### Варіант 1: Фото + підпис
+**Публікація:** ✅ Сайт+канал · 🌐 Сайт · 📢 Канал · 📷 Фото · ✏️ Редагувати · 🔄 Перегенерувати · ◀️ Назад · ❌ Скасувати
 
-Надішли фото, а в підписі (caption):
+## Промпти AI
 
-```
-title: Telegram-бот для магазину: 5 функцій
-summary: Які можливості бота окупаються за місяць
-keywords: бот для магазину, замовити бота, автоматизація продажів
-tags: Telegram, E-commerce
-slug: telegram-bot-magazin-5-funktsiy
+Редагуй **`prompts.py`**:
 
-Основний текст статті.
-Кілька абзаців — кожен через порожній рядок.
-```
+- `POST_FROM_TOPIC_*` — пост з теми
+- `POST_FROM_IDEA_*` — з твоєї сирої ідеї (рекомендовано для щотижневого контенту)
+- `WEEKLY_PLAN` — 7 днів, мікс UA/EN, різні SEO-ніші
 
-### Варіант 2: Тільки текст
+**Рекомендований workflow:**
+1. Понеділок: `📅 План на тиждень`
+2. Щодня: обери день → перевір → `✅ Сайт + канал`
+3. Або кидай ідеї через `💡 Моя ідея` коли є натхнення
 
-```
-/post uk
+## .env
 
-title: Заголовок
-summary: Короткий опис
-keywords: ключ1, ключ2
-tags: Тег1
-slug: url-slug
-
-Текст статті.
+```env
+TELEGRAM_BOT_TOKEN=
+WORKER_URL=https://portfolio-contact-form.cayz696.workers.dev
+PUBLISH_SECRET=
+ALLOWED_USER_IDS=
+OPENROUTER_API_KEY=
+TELEGRAM_CHANNEL_ID=@your_channel
+OPENROUTER_MODEL=google/gemini-3.1-flash-lite
 ```
 
-## SEO-ключі
+## Канал
 
-Поле `keywords` — **обов'язкове для SEO**. Правила:
+1. Створи канал → додай бота **адміном** (право публікації)
+2. В боті: ⚙️ → вкажи `@channel` або `-100…`
 
-- 3–7 ключових фраз на пост
-- Включай головний ключ у `title` і перший абзац `body`
-- Використовуй довгі хвости: «бот для інтернет магазину», а не просто «бот»
-- Для EN-постів — англомовні ключі з `README.md` (розділ SEO)
-
-Ключі потрапляють у:
-- JSON-LD `BlogPosting` на сторінці поста
-- Прихований блок `.blog-keywords` у картці (для індексації)
-- Мета `description` (через `summary`)
-
-## API Worker (для кастомної інтеграції)
-
-### POST /posts
+## Архітектура
 
 ```
-Headers:
-  Content-Type: application/json
-  X-Publish-Secret: <PUBLISH_SECRET>
-
-Body:
-{
-  "lang": "uk",              // uk | en
-  "title": "...",            // обов'язково
-  "body": "...",             // обов'язково
-  "summary": "...",          // для картки та meta description
-  "slug": "...",             // URL: /blog/{slug}/ (авто з title якщо не вказано)
-  "keywords": ["...", "..."], // SEO-ключі
-  "tags": ["...", "..."],
-  "scheduledAt": "2026-07-10T09:00:00+03:00",  // опційно, ISO 8601
-  "imageBase64": "data:image/jpeg;base64,...",  // опційно, до 2 MB
-  "imageMime": "image/jpeg"
-}
+publish_bot.py  — UI, кнопки, стани
+ai_client.py    — async OpenRouter
+publisher.py    — сайт (Worker) + канал (Telegram)
+prompts.py      — промпти (редагуй!)
+keyboards.py    — інлайн-кнопки
+storage.py      — збереження channel_id
 ```
-
-### GET /posts?lang=uk&limit=20
-
-Публічний список постів (без секрету).
-
-### GET /posts/{slug}?lang=uk
-
-Окремий пост за slug.
-
-### GET /images/{imageId}
-
-Зображення поста (публічне).
-
-## Публікація контент-плану
-
-Готові 7 постів — у `content-plan-week.md`. Публікуй вручну через бота (`/post uk` → текст → `/publish`) або через `POST /posts` API Worker.
