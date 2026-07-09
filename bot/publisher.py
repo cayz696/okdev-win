@@ -17,6 +17,11 @@ log = logging.getLogger(__name__)
 
 TG_MESSAGE_MAX = 4096
 TG_CAPTION_MAX = 1024
+_TAG_RE = re.compile(r"[^\w\u0400-\u04FF]+")
+
+
+def _tag_hashtag(tag: str) -> str:
+    return html.escape(f"#{_TAG_RE.sub('_', tag)}")
 
 
 class PublishError(Exception):
@@ -122,10 +127,7 @@ def _channel_message(draft: Draft, *, with_photo: bool) -> str:
 
     tags = ""
     if draft.tags:
-        tags = "\n\n" + " ".join(
-            html.escape(f"#{re.sub(r'[^\\w\\u0400-\\u04FF]+', '_', t)}")
-            for t in draft.tags[:5]
-        )
+        tags = "\n\n" + " ".join(_tag_hashtag(t) for t in draft.tags[:5])
 
     header = f"<b>{title}</b>\n\n"
     max_len = TG_CAPTION_MAX if with_photo else TG_MESSAGE_MAX
