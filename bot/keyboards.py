@@ -29,12 +29,18 @@ def kb_lang(back: str = "nav:main") -> InlineKeyboardMarkup:
     ])
 
 
-def kb_plan_days(count: int = 7, queued_days: set[int] | None = None) -> InlineKeyboardMarkup:
-    queued_days = queued_days or set()
+def kb_plan_days(count: int = 7, day_marks: dict[int, str] | None = None) -> InlineKeyboardMarkup:
+    icons = {
+        "pending": "🖼 ",
+        "approved": "✅ ",
+        "skipped": "⏭ ",
+        "published": "🌐 ",
+    }
+    day_marks = day_marks or {}
     rows = []
     row = []
     for i in range(1, count + 1):
-        mark = "✅ " if i in queued_days else ""
+        mark = icons.get(day_marks.get(i), "")
         row.append(InlineKeyboardButton(f"{mark}День {i}", callback_data=f"plan:{i}"))
         if len(row) == 3:
             rows.append(row)
@@ -43,10 +49,18 @@ def kb_plan_days(count: int = 7, queued_days: set[int] | None = None) -> InlineK
         rows.append(row)
     rows.append([InlineKeyboardButton("🎨 Згенерувати обкладинки", callback_data="act:plan_auto")])
     rows.append([
-        InlineKeyboardButton("🔄 Новий план", callback_data="act:plan"),
-        InlineKeyboardButton("◀️ Меню", callback_data="nav:main"),
+        InlineKeyboardButton("🔄 Новий план", callback_data="act:plan_new"),
+        InlineKeyboardButton("🗑 Видалити план", callback_data="act:plan_clear"),
     ])
+    rows.append([InlineKeyboardButton("◀️ Меню", callback_data="nav:main")])
     return InlineKeyboardMarkup(rows)
+
+
+def kb_plan_confirm_new() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Так, згенерувати новий", callback_data="act:plan_force")],
+        [InlineKeyboardButton("❌ Скасувати", callback_data="act:plan")],
+    ])
 
 
 def kb_draft_actions() -> InlineKeyboardMarkup:

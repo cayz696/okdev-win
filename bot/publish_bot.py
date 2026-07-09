@@ -27,6 +27,7 @@ from keyboards import (
     kb_lang,
     kb_main,
     kb_plan_days,
+    kb_plan_confirm_new,
     kb_plan_preview,
     kb_posts_list,
     kb_schedule_list,
@@ -43,9 +44,10 @@ from plan_previews import (
     set_preview,
     update_preview_status,
 )
-from schedule_storage import add_to_queue, get_pending, remove_from_queue
+from schedule_storage import add_to_queue, get_pending, load_queue, remove_from_queue
 from scheduler import process_due_posts
 from storage import clear_channel_id, get_channel_id, set_channel_id
+from weekly_plan import clear_plan, get_posts, plan_created_label, save_plan
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -143,8 +145,68 @@ async def show_schedule_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 
-def _queued_plan_days() -> set[int]:
-    return {i.get("plan_day") for i in get_pending() if i.get("plan_day")}
+def _plan_day_marks() -> dict[int, str]:
+    marks: dict[int, str] = {}
+    from plan_previews import load_previews
+
+    for key, preview in load_previews().items():
+        try:
+            day = int(key)
+            marks[day] = preview.get("status", "pending")
+        except ValueError:
+            continue
+    for item in get_pending():
+        day = item.get("plan_day")
+        if day:
+            marks[day] = "approved"
+    for item in load_queue():
+        if item.get("status") == "published" and item.get("plan_day"):
+            marks[item["plan_day"]] = "published"
+    return marks
+
+
+def _plan_status_line(day: int, post: dict) -> str:
+    marks = _plan_day_marks()
+    status = marks.get(day, "")
+    labels = {
+        "pending": "🖼 обкладинка",
+        "approved": "✅ в розкладі",
+        "skipped": "⏭ пропущено",
+        "published": "🌐 опубліковано",
+    }
+    suffix = f" · {labels[status]}" if status else ""
+    return f"<b>День {day}</b> [{post.get('lang', 'uk')}] {post.get('title', '')}{suffix}"
+
+
+async def show_weekly_plan_view(update: Update, posts: list[dict], *, answer: bool = True):
+    created = plan_created_label()
+    header = "📅 <b>Контент-план на тиждень</b>"
+    if created:
+        header += f"\n<i>Збережено: {created}</i>"
+    lines = [header, ""]
+    for p in posts:
+        lines.append(_plan_status_line(p.get("day", 0), p))
+    lines.append(
+        "\n<b>Кроки:</b>\n"
+        "1. Обери день → переглянь/редагуй\n"
+        "2. 🎨 Згенерувати обкладинки → Approve\n"
+        "3. Автопублікація о 09:00"
+    )
+    await reply_or_edit(
+        update,
+        "\n".join(lines),
+        reply_markup=kb_plan_days(day_marks=_plan_day_marks()),
+        parse_mode="HTML",
+        answer=answer,
+    )
+
+
+async def generate_weekly_plan_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await reply_or_edit(update, "⏳ Генерую план на 7 днів…", answer=False)
+    posts = await generate_weekly_plan()
+    save_plan(posts)
+    context.user_data["content_plan"] = posts
+    await show_weekly_plan_view(update, posts, answer=False)
 
 
 def _preview_caption(draft: Draft, day: int, note: str = "") -> str:
@@ -159,7 +221,11 @@ def _preview_caption(draft: Draft, day: int, note: str = "") -> str:
     )
 
 
-async def preview_weekly_plan(bot, chat_id: int, plan: list[dict]) -> None:
+async def preview_weekly_plan(bot, chat_id: int, plan: list[dict] | None = None) -> None:
+    plan = plan or get_posts()
+    if len(plan) < 7:
+        await bot.send_message(chat_id, "Спочатку згенеруй план на 7 днів.", reply_markup=kb_back_main())
+        return
     clear_previews()
     await bot.send_message(
         chat_id,
@@ -326,27 +392,38 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode="HTML",
                 )
             elif value == "plan":
-                await safe_answer(q)
-                await reply_or_edit(update, "⏳ Генерую план на 7 днів…", answer=False)
-                posts = await generate_weekly_plan()
-                context.user_data["content_plan"] = posts
-                lines = ["📅 <b>Контент-план на тиждень</b>\n"]
-                for p in posts:
-                    lines.append(f"<b>День {p['day']}</b> [{p.get('lang','uk')}] {p.get('title','')}")
-                lines.append(
-                    "\n<b>Швидко:</b> 🎨 Згенерувати обкладинки → Approve кожну.\n"
-                    "<b>Вручну:</b> обери день → обкладинка → ⏰ В автопублікацію."
-                )
+                posts = get_posts()
+                if posts:
+                    context.user_data["content_plan"] = posts
+                    await show_weekly_plan_view(update, posts)
+                else:
+                    await generate_weekly_plan_flow(update, context)
+            elif value == "plan_new":
+                if get_posts():
+                    await reply_or_edit(
+                        update,
+                        "⚠️ <b>Замінити збережений план?</b>\n\n"
+                        "Поточний план і необроблені обкладинки будуть скинуті.",
+                        reply_markup=kb_plan_confirm_new(),
+                        parse_mode="HTML",
+                    )
+                else:
+                    await generate_weekly_plan_flow(update, context)
+            elif value == "plan_force":
+                clear_previews()
+                await generate_weekly_plan_flow(update, context)
+            elif value == "plan_clear":
+                clear_plan()
+                clear_previews()
+                context.user_data.pop("content_plan", None)
                 await reply_or_edit(
                     update,
-                    "\n".join(lines),
-                    reply_markup=kb_plan_days(queued_days=_queued_plan_days()),
-                    parse_mode="HTML",
-                    answer=False,
+                    "🗑 План видалено.\n\nНатисни 📅 План на тиждень для нового.",
+                    reply_markup=kb_back_main(),
                 )
             elif value == "plan_auto":
                 await safe_answer(q)
-                plan = context.user_data.get("content_plan", [])
+                plan = get_posts() or context.user_data.get("content_plan", [])
                 if len(plan) < 7:
                     await reply_or_edit(
                         update,
@@ -510,7 +587,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif action == "plan":
             day = int(value)
-            plan = context.user_data.get("content_plan", [])
+            plan = get_posts() or context.user_data.get("content_plan", [])
             post = next((p for p in plan if p.get("day") == day), None)
             if not post:
                 await reply_or_edit(update, "День не знайдено. Згенеруй план ще раз.", reply_markup=kb_main(), answer=False)

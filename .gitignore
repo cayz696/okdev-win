@@ -8,6 +8,7 @@ worker/node_modules/
 bot/data/settings.json
 bot/data/schedule.json
 bot/data/plan_previews.json
+bot/data/weekly_plan.json
 bot/.venv/
 bot/__pycache__/
 __pycache__/
