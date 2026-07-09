@@ -5,6 +5,7 @@ import io
 import logging
 
 from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -64,9 +65,28 @@ def pop_screen(context: ContextTypes.DEFAULT_TYPE) -> str:
     return stack[-1] if stack else "main"
 
 
-async def reply_or_edit(update: Update, text: str, reply_markup=None, parse_mode=None):
+async def safe_answer(query, text=None, show_alert: bool = False) -> None:
+    """Telegram callback must be answered within ~10s; ignore stale queries."""
+    try:
+        await query.answer(text=text, show_alert=show_alert)
+    except BadRequest as exc:
+        if "too old" in str(exc).lower() or "invalid" in str(exc).lower():
+            log.debug("Stale callback query ignored: %s", exc)
+        else:
+            raise
+
+
+async def reply_or_edit(
+    update: Update,
+    text: str,
+    reply_markup=None,
+    parse_mode=None,
+    *,
+    answer: bool = True,
+):
     if update.callback_query:
-        await update.callback_query.answer()
+        if answer:
+            await safe_answer(update.callback_query)
         try:
             await update.callback_query.edit_message_text(
                 text, reply_markup=reply_markup, parse_mode=parse_mode
@@ -92,7 +112,7 @@ async def show_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def show_draft(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_draft(update: Update, context: ContextTypes.DEFAULT_TYPE, *, answer: bool = True):
     draft = get_draft(context)
     if not draft.title and not draft.body:
         await reply_or_edit(update, "Чернетка порожня.", reply_markup=kb_main())
@@ -103,6 +123,7 @@ async def show_draft(update: Update, context: ContextTypes.DEFAULT_TYPE):
         draft.preview_text() + "\n\n<b>Куди публікувати?</b>",
         reply_markup=kb_draft_actions(),
         parse_mode="HTML",
+        answer=answer,
     )
 
 
@@ -113,19 +134,20 @@ async def run_ai_generate(update: Update, context: ContextTypes.DEFAULT_TYPE, fr
         await reply_or_edit(update, "Немає теми. Почни спочатку.", reply_markup=kb_main())
         return
 
-    await reply_or_edit(update, "⏳ AI генерує пост…", reply_markup=None)
+    await reply_or_edit(update, "⏳ AI генерує пост…", reply_markup=None, answer=bool(update.callback_query))
     try:
         post = await generate_post(draft.lang, topic, from_idea=from_idea)
         new = Draft.from_ai(post)
         new.image_bytes = draft.image_bytes
         new.image_mime = draft.image_mime
         context.user_data["draft"] = new
-        await show_draft(update, context)
+        await show_draft(update, context, answer=False)
     except AIError as exc:
         await reply_or_edit(
             update,
             f"❌ AI: {exc}",
             reply_markup=kb_draft_actions() if draft.title else kb_main(),
+            answer=False,
         )
 
 
@@ -179,7 +201,8 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode="HTML",
                 )
             elif value == "plan":
-                await reply_or_edit(update, "⏳ Генерую план на 7 днів…")
+                await safe_answer(q)
+                await reply_or_edit(update, "⏳ Генерую план на 7 днів…", answer=False)
                 posts = await generate_weekly_plan()
                 context.user_data["content_plan"] = posts
                 lines = ["📅 <b>Контент-план на тиждень</b>\n"]
@@ -190,6 +213,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "\n".join(lines) + "\n\nОбери день:",
                     reply_markup=kb_plan_days(),
                     parse_mode="HTML",
+                    answer=False,
                 )
             elif value == "draft":
                 await show_draft(update, context)
@@ -231,15 +255,15 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             plan = context.user_data.get("content_plan", [])
             post = next((p for p in plan if p.get("day") == day), None)
             if not post:
-                await q.answer("День не знайдено", show_alert=True)
+                await reply_or_edit(update, "День не знайдено. Згенеруй план ще раз.", reply_markup=kb_main(), answer=False)
                 return
             context.user_data["draft"] = Draft.from_ai(post)
-            await show_draft(update, context)
+            await show_draft(update, context, answer=False)
 
         elif action == "pub":
             draft = get_draft(context)
             if not draft.title or not draft.body:
-                await q.answer("Чернетка порожня", show_alert=True)
+                await reply_or_edit(update, "Чернетка порожня", reply_markup=kb_draft_actions(), answer=False)
                 return
 
             to_site = value in ("all", "site")
@@ -250,7 +274,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if to_channel:
                 targets.add("channel")
 
-            await q.answer("Публікую…")
+            await reply_or_edit(update, "⏳ Публікую…", reply_markup=None, answer=False)
             try:
                 result = await publish_draft(
                     context.bot,
@@ -275,6 +299,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     result.summary_html(targets),
                     reply_markup=markup,
                     parse_mode="HTML",
+                    answer=False,
                 )
             except PublishError as exc:
                 await reply_or_edit(
@@ -282,6 +307,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     str(exc),
                     reply_markup=kb_draft_actions(),
                     parse_mode="HTML",
+                    answer=False,
                 )
 
         elif action == "draft":
@@ -331,13 +357,14 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except (AIError, PublishError) as exc:
         log.warning("User action error: %s", exc)
-        await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main())
+        await reply_or_edit(update, f"❌ {exc}", reply_markup=kb_back_main(), answer=False)
     except Exception as exc:
         log.exception("Callback error: %s", exc)
         await reply_or_edit(
             update,
             f"❌ Помилка: {exc}\n\nСпробуй ще раз або повернись у меню.",
             reply_markup=kb_back_main(),
+            answer=False,
         )
 
 
