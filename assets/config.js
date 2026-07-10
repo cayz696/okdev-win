@@ -1,7 +1,7 @@
 /* Site-wide config — edit once, used by script.js across all pages */
 const SITE_CONFIG = {
   domain: "https://www.okdev.win",
-  workerUrl: "PASTE_YOUR_WORKER_URL_HERE",
+  workerUrl: "https://portfolio-contact-form.cayz696.workers.dev",
   contact: {
     telegram: "@okdev_tech",
     telegramUrl: "https://t.me/okdev_tech",
@@ -10,6 +10,5 @@ const SITE_CONFIG = {
   social: {
     instagram: "https://instagram.com/okdev.win",
     tiktok: "https://www.tiktok.com/@okdev_tech",
-    github: "https://github.com/cayz696",
   },
 };

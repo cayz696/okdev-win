@@ -6,7 +6,7 @@ compatibility_date = "2024-11-01"
 #   wrangler kv namespace create POSTS_KV
 # then paste the returned id below.
 kv_namespaces = [
-  { binding = "POSTS_KV", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+  { binding = "POSTS_KV", id = "ca0bdae0365c46dc9dd4968968b1ee67" }
 ]
 
 # Secrets are NOT stored here — set them via the CLI (see README.md):

@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blog — Oleksandr Kalinovskyi | Automation, bots &amp; AI</title>
-<meta name="description" content="Daily posts on business automation, Telegram bot development, and AI — SEO-focused insights for founders and teams.">
+<title>Blog — Oleksandr Kalinovskyi</title>
+<meta name="description" content="Blog on automation, Telegram bots, and product development.">
 <link rel="canonical" href="https://www.okdev.win/en/blog/">
 <link rel="alternate" hreflang="uk" href="https://www.okdev.win/blog/">
 <link rel="alternate" hreflang="en" href="https://www.okdev.win/en/blog/">
@@ -12,33 +12,42 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Blog — Oleksandr Kalinovskyi">
-<meta property="og:description" content="Daily posts on automation, bots, productivity, and AI.">
+<meta property="og:description" content="Posts on automation, bots, and development.">
 <meta property="og:url" content="https://www.okdev.win/en/blog/">
 <meta property="og:image" content="https://www.okdev.win/assets/og-image-en.png">
-<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../../assets/style.css">
+<link rel="stylesheet" href="/assets/style.css">
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-210079KVCH"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-210079KVCH');
+</script>
 </head>
 <body>
 
 <header class="site-header">
   <div class="container">
-    <a href="../" class="brand"><span class="dot">●</span> ok<span style="color:var(--text-muted)">.dev</span></a>
+    <a href="/en/" class="brand"><span class="dot">●</span> ok<span style="color:var(--text-muted)">.dev</span></a>
     <nav class="primary-nav" aria-label="Primary navigation">
-      <a href="../#about">About</a>
-      <a href="../#projects">Projects</a>
-      <a href="../#services">Services</a>
-      <a href="./" aria-current="true">Blog</a>
-      <a href="../#contact">Contact</a>
+      <a href="/en/#about">About</a>
+      <a href="/en/#projects">Projects</a>
+      <a href="/en/#services">Services</a>
+      <a href="/en/blog/" aria-current="page">Blog</a>
+      <a href="/en/#contact">Contact</a>
     </nav>
     <div class="header-actions">
       <div class="lang-switch">
-        <a href="../../blog/">UA</a>
-        <a href="./" aria-current="true">EN</a>
+        <a href="/blog/">UA</a>
+        <a href="/en/blog/" aria-current="true">EN</a>
       </div>
-      <a href="../#contact" class="btn btn-primary">Discuss a project</a>
+      <a href="/en/#contact" class="btn btn-primary">Discuss a project</a>
       <button class="nav-toggle" aria-label="Menu" aria-expanded="false">☰</button>
     </div>
   </div>
@@ -48,14 +57,13 @@
   <section class="section" style="padding-top:48px">
     <div class="container">
       <div class="section-head reveal">
-        <p class="eyebrow">Blog</p>
-        <h1>Automation, bots &amp; AI ideas</h1>
-        <p>Daily SEO-focused posts — one publication per day. Published via Telegram bot after approval.</p>
+        <h1>Blog</h1>
       </div>
-      <div class="blog-grid" id="blog-grid" data-lang="en"
-           data-empty="No posts yet — the first one will land here once it's approved in Telegram."
-           data-error="Couldn't load posts. Please try refreshing later.">
-        <p class="blog-status">Loading posts…</p>
+      <div class="blog-list" id="blog-grid" data-lang="en"
+           data-empty="No posts yet."
+           data-error="Couldn't load posts. Please refresh the page."
+           data-read-more="Read →">
+        <p class="blog-status">Loading…</p>
       </div>
     </div>
   </section>
@@ -66,16 +74,16 @@
     <div class="footer-top">
       <div class="brand"><span class="dot">●</span> ok<span style="color:var(--text-muted)">.dev</span></div>
       <div class="footer-links">
-        <a href="../#about">About</a>
-        <a href="../#projects">Projects</a>
-        <a href="./">Blog</a>
-        <a href="../#contact">Contact</a>
+        <a href="/en/#about">About</a>
+        <a href="/en/#projects">Projects</a>
+        <a href="/en/blog/">Blog</a>
+        <a href="/en/#contact">Contact</a>
       </div>
     </div>
   </div>
 </footer>
 
-<script src="../../assets/config.js"></script>
-<script src="../../assets/script.js"></script>
+<script src="/assets/config.js"></script>
+<script src="/assets/script.js"></script>
 </body>
 </html>

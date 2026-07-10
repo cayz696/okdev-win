@@ -1,15 +1,36 @@
-"""OpenRouter image generation for blog covers."""
+"""Blog cover images — Gemini by default, logo overlay via Pillow (no gibberish text)."""
 
 import base64
 import logging
+import re
 
 import httpx
 
-from config import OPENROUTER_API_KEY, OPENROUTER_IMAGE_MODEL, SITE_DOMAIN
+from config import COVER_MODE, OPENROUTER_API_KEY, OPENROUTER_IMAGE_MODEL, SITE_DOMAIN
+from cover_builder import build_branded_cover, finish_cover_from_bytes
 from models import Draft
 
 OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/images"
 log = logging.getLogger("okdev-bot")
+
+# ok.dev palette
+BRAND_STYLE = (
+    "Dark near-black background (#0b0e11 to #12161b). "
+    "Mint-teal (#2dd4bf) and cyan (#06b6d4) accent glow. "
+    "Optional tiny warm amber (#f5a623) light speck. "
+    "Minimal premium developer aesthetic. "
+)
+
+# Never put article title / Ukrainian text into the prompt — models render it as gibberish.
+VISUAL_THEMES = {
+    "ai": "abstract neural pathways, soft nodes and connecting lines",
+    "bot": "abstract chat bubbles as geometric shapes without symbols inside",
+    "telegram": "abstract paper-plane geometry, messaging flow lines",
+    "automation": "abstract gears and flowing pipelines, no labels",
+    "business": "abstract growth curves and workflow arrows, no charts with text",
+    "crm": "abstract connected dots network, CRM metaphor",
+    "default": "abstract automation and technology atmosphere",
+}
 
 
 class ImageError(Exception):
@@ -27,31 +48,61 @@ def _headers() -> dict:
     }
 
 
+def _visual_theme(draft: Draft) -> str:
+    hay = " ".join(
+        [draft.source_topic or "", draft.summary or "", " ".join(draft.tags or []), " ".join(draft.keywords or [])]
+    ).lower()
+    for key, theme in VISUAL_THEMES.items():
+        if key != "default" and key in hay:
+            return theme
+    if re.search(r"\bai\b|агент|штучн", hay):
+        return VISUAL_THEMES["ai"]
+    if re.search(r"бот|telegram|телеграм", hay):
+        return VISUAL_THEMES["telegram"]
+    if re.search(r"автомат|рутин|бізнес|business", hay):
+        return VISUAL_THEMES["automation"]
+    return VISUAL_THEMES["default"]
+
+
 def build_image_prompt(draft: Draft) -> str:
-    keywords = ", ".join(draft.keywords[:5]) if draft.keywords else draft.summary[:120]
+    theme = _visual_theme(draft)
     return (
-        "Professional blog hero image for a technology and automation article. "
-        f"Topic: {draft.title}. "
-        f"Context: {draft.summary[:200]}. "
-        f"Keywords: {keywords}. "
-        "Style: modern dark tech aesthetic, subtle blue accents, clean composition, "
-        "high quality, no text, no logos, no watermarks, no faces close-up. "
-        "Suitable for website header and Telegram channel cover."
+        "Create ONE abstract blog hero background wallpaper. "
+        f"Visual theme: {theme}. "
+        f"{BRAND_STYLE} "
+        "Soft cinematic lighting, depth, clean negative space on the left bottom for a logo. "
+        "CRITICAL: the image must contain ZERO text — no letters, no words, no numbers, "
+        "no typography, no captions, no headlines, no UI, no screenshots, no dashboards, "
+        "no browser windows, no fake interfaces, no watermarks. "
+        "Pure abstract illustration only."
     )
 
 
 async def generate_cover_image(draft: Draft) -> tuple[bytes, str]:
+    mode = COVER_MODE
+    if mode == "brand":
+        log.info("Cover: branded template for %s", draft.slug)
+        return build_branded_cover(draft)
+    if mode in ("gemini", "ai", "flux"):
+        return await _generate_gemini_cover(draft)
+    raise ImageError(f"Невідомий COVER_MODE={mode!r}. Використай gemini або brand.")
+
+
+async def _generate_gemini_cover(draft: Draft) -> tuple[bytes, str]:
+    prompt = build_image_prompt(draft)
     payload = {
         "model": OPENROUTER_IMAGE_MODEL,
-        "prompt": build_image_prompt(draft),
+        "prompt": prompt,
         "aspect_ratio": "16:9",
         "resolution": "1K",
         "output_format": "jpeg",
-        "output_compression": 85,
+        "output_compression": 88,
         "n": 1,
     }
 
-    async with httpx.AsyncClient(timeout=120) as client:
+    log.info("Cover: %s via %s", draft.slug, OPENROUTER_IMAGE_MODEL)
+
+    async with httpx.AsyncClient(timeout=180) as client:
         res = await client.post(OPENROUTER_IMAGE_URL, headers=_headers(), json=payload)
 
     if not res.is_success:
@@ -62,17 +113,13 @@ async def generate_cover_image(draft: Draft) -> tuple[bytes, str]:
     if not images:
         raise ImageError("OpenRouter не повернув зображення")
 
-    item = images[0]
-    b64 = item.get("b64_json")
+    b64 = images[0].get("b64_json")
     if not b64:
         raise ImageError("Порожня відповідь зображення")
 
-    mime = item.get("media_type") or "image/jpeg"
-    if mime == "image/png":
-        mime = "image/jpeg"
-
     cost = (data.get("usage") or {}).get("cost")
     if cost is not None:
-        log.info("Image generated via %s, cost ~$%.4f", OPENROUTER_IMAGE_MODEL, cost)
+        log.info("Cover cost ~$%.4f", cost)
 
-    return base64.b64decode(b64), mime
+    raw = base64.b64decode(b64)
+    return finish_cover_from_bytes(raw)

@@ -12,8 +12,10 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-3.1-flash-lite")
 OPENROUTER_IMAGE_MODEL = os.getenv(
     "OPENROUTER_IMAGE_MODEL",
-    "black-forest-labs/flux.2-klein-4b",
+    "google/gemini-3.1-flash-lite-image",
 )
+# gemini = Gemini + logo overlay (default). brand = free Pillow template only.
+COVER_MODE = os.getenv("COVER_MODE", "gemini").strip().lower()
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "https://www.okdev.win")
 BOT_TIMEZONE = os.getenv("BOT_TIMEZONE", "Europe/Kyiv")
 

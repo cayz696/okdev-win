@@ -1,0 +1,14 @@
+{
+  "name": "okdev-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "login": "wrangler login",
+    "kv:create": "wrangler kv namespace create POSTS_KV",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.107.1"
+  }
+}

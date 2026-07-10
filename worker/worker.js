@@ -2,7 +2,12 @@
    Cloudflare Worker — contact form + blog publish bridge + image storage
    ========================================================================= */
 
-const ALLOWED_ORIGINS = ["https://okdev.win", "https://www.okdev.win"];
+const ALLOWED_ORIGINS = [
+  "https://okdev.win",
+  "https://www.okdev.win",
+  "http://okdev.win",
+  "http://www.okdev.win",
+];
 
 const POSTS_KEY = "posts";
 const MAX_POSTS_STORED = 200;

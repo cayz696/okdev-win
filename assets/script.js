@@ -43,6 +43,8 @@ function imageUrl(post) {
 }
 
 /* ---------------- Blog list ---------------- */
+const BLOG_PAGE_SIZE = 20;
+
 async function initBlog() {
   const grid = document.getElementById("blog-grid");
   if (!grid) return;
@@ -50,47 +52,128 @@ async function initBlog() {
   const lang = grid.dataset.lang || "uk";
   const emptyMsg = grid.dataset.empty || "";
   const errorMsg = grid.dataset.error || "";
+  const readMore = grid.dataset.readMore || (lang === "uk" ? "Читати →" : "Read →");
+  const loadMoreLabel = lang === "uk" ? "Показати ще" : "Load more";
+  const countLabel = (shown, total) =>
+    lang === "uk" ? `Показано ${shown} з ${total}` : `Showing ${shown} of ${total}`;
 
   if (!workerReady()) {
     grid.innerHTML = `<p class="blog-status">${errorMsg}</p>`;
     return;
   }
 
-  try {
-    const res = await fetch(`${CONTACT_FORM_CONFIG.workerUrl}/posts?lang=${encodeURIComponent(lang)}&limit=30`);
+  grid.innerHTML = `<p class="blog-status">${lang === "uk" ? "Завантажую…" : "Loading…"}</p>`;
+  grid._blogState = { lang, offset: 0, total: 0, items: [] };
+
+  async function fetchPage(offset) {
+    const res = await fetch(
+      `${CONTACT_FORM_CONFIG.workerUrl}/posts?lang=${encodeURIComponent(lang)}&limit=${BLOG_PAGE_SIZE}&offset=${offset}`,
+    );
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) throw new Error("Worker error");
+    return data;
+  }
 
-    const posts = Array.isArray(data.posts) ? data.posts : [];
-    if (!posts.length) {
-      grid.innerHTML = `<p class="blog-status">${emptyMsg}</p>`;
-      return;
-    }
-
+  function renderPosts(posts, append) {
     const dateFmt = new Intl.DateTimeFormat(lang === "uk" ? "uk-UA" : "en-US", {
       year: "numeric", month: "long", day: "numeric",
     });
-
-    grid.innerHTML = posts.map((p, i) => {
+    const startIdx = append ? grid._blogState.items.length : 0;
+    const html = posts.map((p, i) => {
+      const idx = startIdx + i;
       const date = p.publishedAt ? dateFmt.format(new Date(p.publishedAt)) : "";
       const tags = Array.isArray(p.tags) ? p.tags : [];
-      const keywords = Array.isArray(p.keywords) ? p.keywords : [];
       const img = imageUrl(p);
       const slug = p.slug || p.id;
+      const panelId = `blog-panel-${idx}`;
       return `
-        <a href="${postUrl(slug)}" class="blog-card reveal stagger-item" style="--stagger:${i * 0.08}s">
-          ${img ? `<div class="blog-card-image"><img src="${img}" alt="" loading="lazy"></div>` : ""}
-          <div class="blog-card-body">
-            <div class="blog-card-meta">${date}</div>
-            <h3>${escapeHtml(p.title || "")}</h3>
+        <article class="blog-item reveal stagger-item is-visible" style="--stagger:${(idx % BLOG_PAGE_SIZE) * 0.04}s">
+          <button class="blog-item-toggle" type="button" aria-expanded="false" aria-controls="${panelId}">
+            <span class="blog-item-head">
+              <span class="blog-item-date">${date}</span>
+              <span class="blog-item-title">${escapeHtml(p.title || "")}</span>
+            </span>
+            <span class="blog-item-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="blog-item-panel" id="${panelId}" hidden>
+            ${img ? `<div class="blog-item-image"><img src="${img}" alt="" loading="lazy"></div>` : ""}
             <p>${escapeHtml(p.summary || "")}</p>
             ${tags.length ? `<div class="blog-tags">${tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}
-            ${keywords.length ? `<div class="blog-keywords" aria-hidden="true">${keywords.map((k) => escapeHtml(k)).join(" · ")}</div>` : ""}
+            <a href="${postUrl(slug)}" class="blog-item-link">${readMore}</a>
           </div>
-        </a>`;
+        </article>`;
     }).join("");
+    return html;
+  }
 
-    document.querySelectorAll("#blog-grid .reveal").forEach((el) => el.classList.add("is-visible"));
+  function bindToggles(root) {
+    root.querySelectorAll(".blog-item-toggle").forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", () => {
+        const panel = btn.nextElementSibling;
+        const isOpen = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!isOpen));
+        panel.hidden = isOpen;
+        btn.closest(".blog-item").classList.toggle("is-open", !isOpen);
+      });
+    });
+  }
+
+  function renderFooter(state) {
+    let footer = grid.parentElement.querySelector(".blog-list-footer");
+    if (!footer) {
+      footer = document.createElement("div");
+      footer.className = "blog-list-footer";
+      grid.after(footer);
+    }
+    const shown = state.items.length;
+    if (!shown) {
+      footer.innerHTML = "";
+      return;
+    }
+    footer.innerHTML = `
+      <p class="blog-count">${countLabel(shown, state.total)}</p>
+      ${state.hasMore ? `<button type="button" class="btn btn-secondary blog-load-more">${loadMoreLabel}</button>` : ""}`;
+    const btn = footer.querySelector(".blog-load-more");
+    if (btn) btn.addEventListener("click", () => loadMore());
+  }
+
+  async function loadMore() {
+    const state = grid._blogState;
+    const btn = grid.parentElement.querySelector(".blog-load-more");
+    if (btn) { btn.disabled = true; btn.textContent = lang === "uk" ? "Завантажую…" : "Loading…"; }
+    try {
+      const data = await fetchPage(state.offset);
+      state.items = state.items.concat(data.posts || []);
+      state.offset = state.items.length;
+      state.total = data.total || state.items.length;
+      state.hasMore = !!data.hasMore;
+      const wrap = document.createElement("div");
+      wrap.innerHTML = renderPosts(data.posts || [], true);
+      while (wrap.firstChild) grid.appendChild(wrap.firstChild);
+      bindToggles(grid);
+      renderFooter(state);
+    } catch {
+      if (btn) { btn.disabled = false; btn.textContent = loadMoreLabel; }
+    }
+  }
+
+  try {
+    const data = await fetchPage(0);
+    const posts = Array.isArray(data.posts) ? data.posts : [];
+    grid._blogState = {
+      lang, offset: posts.length, total: data.total || posts.length,
+      hasMore: !!data.hasMore, items: posts,
+    };
+    if (!posts.length) {
+      grid.innerHTML = `<p class="blog-status">${emptyMsg}</p>`;
+      renderFooter({ items: [], total: 0, hasMore: false });
+      return;
+    }
+    grid.innerHTML = renderPosts(posts, false);
+    bindToggles(grid);
+    renderFooter(grid._blogState);
   } catch {
     grid.innerHTML = `<p class="blog-status">${errorMsg}</p>`;
   }
@@ -129,8 +212,7 @@ async function initPostPage() {
     const domain = (typeof SITE_CONFIG !== "undefined" && SITE_CONFIG.domain) || "";
 
     document.title = `${p.title} — ok.dev`;
-    setMeta("description", p.summary || p.title);
-    if (domain) setMeta("og:url", `${domain}${postUrl(p.slug || slug)}`, "property");
+    applyPostSeo(p, slug, lang, img, domain);
 
     root.innerHTML = `
       <article class="post-article reveal is-visible">
@@ -141,6 +223,7 @@ async function initPostPage() {
         <div class="post-body">${formatPostBody(p.body || "")}</div>
         ${tags.length ? `<div class="blog-tags">${tags.map((t) => `<span>${escapeHtml(t)}</span>`).join("")}</div>` : ""}
         ${keywords.length ? `<p class="post-keywords-label">${root.dataset.keywordsLabel || "Keywords"}: <span>${keywords.map((k) => escapeHtml(k)).join(", ")}</span></p>` : ""}
+        ${keywords.length ? `<div class="blog-keywords" aria-hidden="true">${keywords.map((k) => escapeHtml(k)).join(" · ")}</div>` : ""}
         <div class="post-cta">
           <a href="${lang === "uk" ? "/" : "/en/"}#contact" class="btn btn-primary">${root.dataset.cta || "Discuss a project →"}</a>
         </div>
@@ -169,6 +252,7 @@ function formatPostBody(text) {
 }
 
 function setMeta(name, content, attr = "name") {
+  if (!content) return;
   let el = document.querySelector(`meta[${attr}="${name}"]`);
   if (!el) {
     el = document.createElement("meta");
@@ -176,6 +260,35 @@ function setMeta(name, content, attr = "name") {
     document.head.appendChild(el);
   }
   el.setAttribute("content", content);
+}
+
+function setCanonical(href) {
+  if (!href) return;
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement("link");
+    el.rel = "canonical";
+    document.head.appendChild(el);
+  }
+  el.href = href;
+}
+
+function applyPostSeo(post, slug, lang, imageUrl, domain) {
+  const keywords = Array.isArray(post.keywords) ? post.keywords : [];
+  const summary = post.summary || post.title || "";
+  const url = domain ? `${domain}${postUrl(post.slug || slug)}` : "";
+
+  setMeta("description", summary);
+  if (keywords.length) setMeta("keywords", keywords.join(", "));
+  if (url) setCanonical(url);
+
+  setMeta("og:title", post.title || "", "property");
+  setMeta("og:description", summary, "property");
+  setMeta("og:type", "article", "property");
+  if (url) setMeta("og:url", url, "property");
+  if (imageUrl) setMeta("og:image", imageUrl, "property");
+  setMeta("twitter:card", "summary_large_image");
+  if (imageUrl) setMeta("twitter:image", imageUrl);
 }
 
 function injectPostJsonLd(post, domain, lang) {
