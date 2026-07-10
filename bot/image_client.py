@@ -1,4 +1,4 @@
-"""Blog cover images — Gemini by default, logo overlay via Pillow (no gibberish text)."""
+"""Blog cover images — Gemini by default, optional Pillow for logo overlay."""
 
 import base64
 import logging
@@ -7,13 +7,11 @@ import re
 import httpx
 
 from config import COVER_MODE, OPENROUTER_API_KEY, OPENROUTER_IMAGE_MODEL, SITE_DOMAIN
-from cover_builder import build_branded_cover, finish_cover_from_bytes
 from models import Draft
 
 OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/images"
 log = logging.getLogger("okdev-bot")
 
-# ok.dev palette
 BRAND_STYLE = (
     "Dark near-black background (#0b0e11 to #12161b). "
     "Mint-teal (#2dd4bf) and cyan (#06b6d4) accent glow. "
@@ -21,7 +19,6 @@ BRAND_STYLE = (
     "Minimal premium developer aesthetic. "
 )
 
-# Never put article title / Ukrainian text into the prompt — models render it as gibberish.
 VISUAL_THEMES = {
     "ai": "abstract neural pathways, soft nodes and connecting lines",
     "bot": "abstract chat bubbles as geometric shapes without symbols inside",
@@ -70,10 +67,10 @@ def build_image_prompt(draft: Draft) -> str:
         "Create ONE abstract blog hero background wallpaper. "
         f"Visual theme: {theme}. "
         f"{BRAND_STYLE} "
-        "Soft cinematic lighting, depth, clean negative space on the left bottom for a logo. "
+        "Soft cinematic lighting, depth, clean negative space. "
         "CRITICAL: the image must contain ZERO text — no letters, no words, no numbers, "
         "no typography, no captions, no headlines, no UI, no screenshots, no dashboards, "
-        "no browser windows, no fake interfaces, no watermarks. "
+        "no browser windows, no fake interfaces, no watermarks, no logos. "
         "Pure abstract illustration only."
     )
 
@@ -81,6 +78,7 @@ def build_image_prompt(draft: Draft) -> str:
 async def generate_cover_image(draft: Draft) -> tuple[bytes, str]:
     mode = COVER_MODE
     if mode == "brand":
+        from cover_builder import build_branded_cover
         log.info("Cover: branded template for %s", draft.slug)
         return build_branded_cover(draft)
     if mode in ("gemini", "ai", "flux"):
@@ -122,4 +120,10 @@ async def _generate_gemini_cover(draft: Draft) -> tuple[bytes, str]:
         log.info("Cover cost ~$%.4f", cost)
 
     raw = base64.b64decode(b64)
-    return finish_cover_from_bytes(raw)
+
+    try:
+        from cover_builder import finish_cover_from_bytes
+        return finish_cover_from_bytes(raw)
+    except ImportError:
+        log.info("Pillow not installed — using raw Gemini cover")
+        return raw, "image/jpeg"

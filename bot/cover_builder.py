@@ -1,16 +1,16 @@
-"""Branded blog covers — Pillow only, zero AI text risk."""
+"""Branded blog covers — Pillow optional (needed only for logo overlay / brand mode)."""
 
 from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import random
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
-
 from models import Draft
 
+log = logging.getLogger("okdev-bot")
 BRAND_LOGO = Path(__file__).resolve().parent / "brand" / "okdev-logo.png"
 
 # ok.dev palette (assets/style.css)
@@ -24,6 +24,26 @@ VIOLET = (167, 139, 250)
 SIZE = (1280, 720)
 
 
+def pillow_available() -> bool:
+    try:
+        import PIL  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _pil():
+    try:
+        from PIL import Image, ImageDraw, ImageFilter
+    except ImportError as exc:
+        from image_client import ImageError
+        raise ImageError(
+            "Pillow не встановлено. Для COVER_MODE=brand: pip install Pillow. "
+            "Для COVER_MODE=gemini Pillow не обов'язковий."
+        ) from exc
+    return Image, ImageDraw, ImageFilter
+
+
 def _rng(draft: Draft) -> random.Random:
     key = draft.slug or draft.title or "okdev"
     seed = int(hashlib.sha256(key.encode()).hexdigest()[:16], 16)
@@ -34,7 +54,8 @@ def _lerp(a: int, b: int, t: float) -> int:
     return int(a + (b - a) * t)
 
 
-def _vertical_gradient(w: int, h: int) -> Image.Image:
+def _vertical_gradient(w: int, h: int):
+    Image, _, _ = _pil()
     img = Image.new("RGB", (w, h))
     px = img.load()
     for y in range(h):
@@ -47,13 +68,8 @@ def _vertical_gradient(w: int, h: int) -> Image.Image:
     return img
 
 
-def _glow_blob(
-    size: tuple[int, int],
-    center: tuple[float, float],
-    radius: float,
-    color: tuple[int, int, int],
-    alpha: int,
-) -> Image.Image:
+def _glow_blob(size, center, radius, color, alpha):
+    Image, ImageDraw, ImageFilter = _pil()
     w, h = size
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
@@ -63,14 +79,12 @@ def _glow_blob(
         t = i / steps
         r = radius * t
         a = int(alpha * (1 - t) ** 1.6)
-        draw.ellipse(
-            (cx - r, cy - r, cx + r, cy + r),
-            fill=(*color, a),
-        )
+        draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(*color, a))
     return layer.filter(ImageFilter.GaussianBlur(radius=18))
 
 
-def _wire_grid(size: tuple[int, int], alpha: int = 22) -> Image.Image:
+def _wire_grid(size, alpha: int = 22):
+    Image, ImageDraw, _ = _pil()
     w, h = size
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
@@ -83,7 +97,8 @@ def _wire_grid(size: tuple[int, int], alpha: int = 22) -> Image.Image:
     return layer
 
 
-def _accent_arcs(size: tuple[int, int], rng: random.Random) -> Image.Image:
+def _accent_arcs(size, rng: random.Random):
+    Image, ImageDraw, ImageFilter = _pil()
     w, h = size
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
@@ -105,7 +120,8 @@ def _accent_arcs(size: tuple[int, int], rng: random.Random) -> Image.Image:
     return layer.filter(ImageFilter.GaussianBlur(radius=1.2))
 
 
-def _signal_dot(size: tuple[int, int], rng: random.Random) -> Image.Image:
+def _signal_dot(size, rng: random.Random):
+    Image, ImageDraw, _ = _pil()
     w, h = size
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
@@ -118,7 +134,8 @@ def _signal_dot(size: tuple[int, int], rng: random.Random) -> Image.Image:
     return layer
 
 
-def paste_logo(base: Image.Image) -> Image.Image:
+def paste_logo(base):
+    Image, _, _ = _pil()
     if not BRAND_LOGO.exists():
         return base
     logo = Image.open(BRAND_LOGO).convert("RGBA")
@@ -135,6 +152,7 @@ def paste_logo(base: Image.Image) -> Image.Image:
 
 
 def build_branded_cover(draft: Draft) -> tuple[bytes, str]:
+    Image, ImageDraw, ImageFilter = _pil()
     w, h = SIZE
     rng = _rng(draft)
 
@@ -156,7 +174,6 @@ def build_branded_cover(draft: Draft) -> tuple[bytes, str]:
     base = Image.alpha_composite(base, _accent_arcs((w, h), rng))
     base = Image.alpha_composite(base, _signal_dot((w, h), rng))
 
-    # subtle vignette
     vignette = Image.new("L", (w, h), 0)
     vdraw = ImageDraw.Draw(vignette)
     vdraw.ellipse((-w * 0.15, -h * 0.2, w * 1.15, h * 1.2), fill=255)
@@ -180,7 +197,12 @@ def build_branded_cover(draft: Draft) -> tuple[bytes, str]:
 
 
 def finish_cover_from_bytes(raw: bytes) -> tuple[bytes, str]:
-    """Resize AI background and overlay ok.dev logo — guarantees no fake text on cover."""
+    """Resize Gemini output and overlay logo. Skips overlay if Pillow missing."""
+    if not pillow_available():
+        log.info("Pillow not installed — using raw Gemini cover")
+        return raw, "image/jpeg"
+
+    Image, _, _ = _pil()
     img = Image.open(io.BytesIO(raw)).convert("RGBA")
     img = img.resize(SIZE, Image.Resampling.LANCZOS)
     img = paste_logo(img).convert("RGB")
